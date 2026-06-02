@@ -1,0 +1,18 @@
+/target
+
+node_modules
+
+.DS_Store
+
+*.part
+
+onshape/
+
+www/pkg/
+
+*.png
+
+.zed
+
+# samply record output file
+profile.json.gz
