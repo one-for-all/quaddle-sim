@@ -16,3 +16,5 @@ www/pkg/
 
 # samply record output file
 profile.json.gz
+
+Cargo.lock
