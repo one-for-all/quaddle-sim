@@ -1,5 +1,7 @@
 /target
 
+__pycache__
+
 node_modules
 
 .DS_Store
@@ -18,3 +20,8 @@ www/pkg/
 profile.json.gz
 
 Cargo.lock
+
+convert_stl_to_obj.py
+update_urdf.sh
+www/static/robot.urdf
+www/static/mesh

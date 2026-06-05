@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+        />
+        <title>Quaddle Robot</title>
+        <style>
+            header {
+                padding-top: env(safe-area-inset-top);
+            }
+            footer {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            body,
+            html {
+                margin: 0;
+                padding: 0;
+                height: 100vh; /* Fallback for older browsers */
+                height: 100dvh; /* The "magic" unit that adjusts to mobile UI */
+                overflow: hidden;
+                width: 100%;
+                display: flex;
+                position: relative;
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            }
+        </style>
+        <link rel="stylesheet" href="css/main.css" />
+        <link rel="stylesheet" href="css/sim.css" />
+        <link rel="stylesheet" href="css/overlay.css" />
+    </head>
+    <body>
+        <div class="main-wrapper">
+            <!--robot simulation view with serial monitor -->
+            <div id="threejs"></div>
+            <!--UI componenets that float above everying else-->
+            <div class="overlay">
+                <div id="realtimeRatio">realtime rate: 1.0</div>
+            </div>
+        </div>
+        <script src="bundle.js"></script>
+    </body>
+</html>

@@ -1,0 +1,10 @@
+#realtimeRatio {
+    position: absolute;
+    flex: 1;
+    z-index: 2;
+    top: 30px;
+    right: 10px;
+    color: green;
+    visibility: visible;
+    font-size: 13px;
+}

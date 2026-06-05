@@ -1,0 +1,41 @@
+{
+  "author": "lijay <lijay@ape.contact>",
+  "name": "quaddle-ui",
+  "version": "0.0.1",
+  "description": "UI for quaddle robot",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "npm ci && rimraf ../docs pkg && rspack",
+    "start": "rspack serve --open --node-env development",
+    "prod": "rspack serve --open --node-env production",
+    "preview": "rspack preview",
+    "build:gpu": "FEATURE_GPU=1 npm run build",
+    "start:gpu": "FEATURE_GPU=1 npm run start",
+    "prod:gpu": "FEATURE_GPU=1 npm run prod"
+  },
+  "dependencies": {
+    "@types/webpack-env": "^1.18.8",
+    "ansi-to-html": "^0.7.2",
+    "quaddle-sim": "file:../pkg",
+    "gorilla-physics-ui": "file:../../gorilla-physics/www",
+    "jszip": "^3.10.1",
+    "monaco-editor": "^0.55.1",
+    "monaco-editor-webpack-plugin": "^7.1.1",
+    "three": "^0.152.0"
+  },
+  "devDependencies": {
+    "@rspack/cli": "^2.0.0",
+    "@rspack/core": "^2.0.0",
+    "@rspack/dev-server": "^2.0.0",
+    "@types/three": "^0.144.0",
+    "@wasm-tool/wasm-pack-plugin": "^1.1.0",
+    "arraybuffer-loader": "^1.0.8",
+    "css-loader": "^7.1.4",
+    "postcss": "^8.5.8",
+    "postcss-loader": "^8.2.1",
+    "rimraf": "^3.0.2",
+    "style-loader": "^4.0.0",
+    "typescript": "^4.8.4"
+  }
+}

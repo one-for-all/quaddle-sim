@@ -1,0 +1,7 @@
+#threejs {
+    height: 100vh; /* Fallback for older browsers */
+    height: 100dvh; /* The "magic" unit that adjusts to mobile UI */
+    flex: 1;
+    position: relative;
+    min-width: 0;
+}
