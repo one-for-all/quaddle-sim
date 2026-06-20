@@ -10,16 +10,16 @@ use gorilla_physics::{
     },
     joint::{
         Joint,
-        constraint::{
-            Constraint, RangeConstraint, RelativeRangeConstraint,
-            constraint_revolute::RevoluteConstraintJoint,
-        },
+        constraint::{Constraint, RangeConstraint, RelativeRangeConstraint},
     },
-    na::{Isometry3, Rotation3, Translation3, UnitQuaternion, Vector3},
+    na::Vector3,
     spatial::transform::Transform3D,
     types::Float,
 };
 use urdf_rs::Robot;
+
+#[cfg(any(target_arch = "wasm32", rust_analyzer))]
+use crate::control::QuaddleController;
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 use {
@@ -50,6 +50,7 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
         -Vector3::z_axis(),
         0.,
     );
+    // let lf_thigh_joint = build_fixed_joint(lf_thigh_frame, body_frame, "left_front_thigh", urdf);
 
     let lf_motor_arm_frame = "left_front_motor";
     let lf_motor_arm = build_rigid(lf_motor_arm_frame, "motor_arm", urdf, meshes);
@@ -95,8 +96,37 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
         0.,
     );
 
+    // let closing_1_frame = "closing_1";
+    // let mut closing_1 = build_rigid(closing_1_frame, "closing_left_front_leg_1", urdf, meshes);
+    // closing_1.add_collision_sphere_at(&Vector3::zeros(), 0.01);
+    // let closing_1_joint = build_fixed_joint(
+    //     closing_1_frame,
+    //     lf_leg_frame,
+    //     "closing_left_front_leg_1_frame",
+    //     urdf,
+    // );
+
+    // let closing_2_frame = "closing_2";
+    // let mut closing_2 = build_rigid(closing_2_frame, "closing_left_front_leg_2", urdf, meshes);
+    // closing_2.add_collision_sphere_at(&Vector3::zeros(), 0.01);
+    // let closing_2_joint = build_fixed_joint(
+    //     closing_2_frame,
+    //     lf_thigh_frame,
+    //     "closing_left_front_leg_2_frame",
+    //     urdf,
+    // );
+
     let mut articulated = Articulated::new(
-        vec![body, lf_thigh, lf_motor_arm, lf_spring, lf_leg, lf_wheel],
+        vec![
+            body,
+            lf_thigh,
+            lf_motor_arm,
+            lf_spring,
+            lf_leg,
+            lf_wheel,
+            // closing_1,
+            // closing_2,
+        ],
         vec![
             body_joint,
             lf_thigh_joint,
@@ -104,6 +134,8 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
             lf_spring_joint,
             lf_leg_joint,
             lf_wheel_joint,
+            // closing_1_joint,
+            // closing_2_joint,
         ],
     );
 
@@ -143,6 +175,9 @@ pub async fn createQuaddle() -> InterfaceHybrid {
     let mut meshes = URDFMeshes::new(&urdf_robot).await;
 
     let mut state = build_quaddle(&mut meshes, &urdf_robot);
+
+    let controller = QuaddleController::new();
+    state.set_controller(0, controller);
 
     InterfaceHybrid::new(state)
 }

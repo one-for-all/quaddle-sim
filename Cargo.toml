@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 gorilla-physics = { path = "../gorilla-physics/"}
+esp32rs = {path = "../esp32rs/"}
 urdf-rs = "0.9.0"
 futures = "0.3"
 wasm-bindgen = "0.2"
