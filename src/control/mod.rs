@@ -30,7 +30,9 @@ impl ArticulatedController for QuaddleController {
     fn control(&mut self, articulated: &Articulated, input: &Vec<Float>) -> DVector<Float> {
         let command_angle = self.t.sin() * 30.;
         self.servos[0].command_angle = Some(command_angle.to_radians());
-        self.servos[3].command_angle = Some(-command_angle.to_radians());
+
+        let command_angle = -self.t.sin() * 45. + 45.;
+        self.servos[3].command_angle = Some(command_angle.to_radians());
 
         let mut torques = vec![];
 
