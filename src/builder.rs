@@ -96,6 +96,51 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
         0.,
     );
 
+    // right-front
+    let rf_thigh_frame = "right_front_thigh";
+    let rf_thigh = build_rigid(rf_thigh_frame, "thigh_right", urdf, meshes);
+    let rf_thigh_joint = build_joint(
+        rf_thigh_frame,
+        body_frame,
+        "right_front_thigh",
+        urdf,
+        -Vector3::z_axis(),
+        0.,
+    );
+
+    let rf_motor_arm_frame = "right_front_motor";
+    let rf_motor_arm = build_rigid(rf_motor_arm_frame, "motor_arm_2", urdf, meshes);
+    let rf_motor_arm_joint = build_joint(
+        rf_motor_arm_frame,
+        body_frame,
+        "right_front_motor_arm",
+        urdf,
+        -Vector3::z_axis(),
+        0.,
+    );
+
+    let rf_spring_frame = "right_front_spring";
+    let rf_spring = build_rigid(rf_spring_frame, "long_spring_right", urdf, meshes);
+    let rf_spring_joint = build_joint(
+        rf_spring_frame,
+        rf_motor_arm_frame,
+        "right_front_spring",
+        urdf,
+        -Vector3::z_axis(),
+        0.,
+    );
+
+    let rf_leg_frame = "right_front_leg";
+    let rf_leg = build_rigid(rf_leg_frame, "leg_right", urdf, meshes);
+    let rf_leg_joint = build_joint(
+        rf_leg_frame,
+        rf_spring_frame,
+        "right_front_leg",
+        urdf,
+        -Vector3::z_axis(),
+        0.,
+    );
+
     // let closing_1_frame = "closing_1";
     // let mut closing_1 = build_rigid(closing_1_frame, "closing_left_front_leg_1", urdf, meshes);
     // closing_1.add_collision_sphere_at(&Vector3::zeros(), 0.01);
@@ -124,6 +169,10 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
             lf_spring,
             lf_leg,
             lf_wheel,
+            rf_thigh,
+            rf_motor_arm,
+            rf_spring,
+            rf_leg,
             // closing_1,
             // closing_2,
         ],
@@ -134,6 +183,10 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
             lf_spring_joint,
             lf_leg_joint,
             lf_wheel_joint,
+            rf_thigh_joint,
+            rf_motor_arm_joint,
+            rf_spring_joint,
+            rf_leg_joint,
             // closing_1_joint,
             // closing_2_joint,
         ],
@@ -146,11 +199,25 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
         urdf,
     ))]);
 
+    articulated.add_constraints(vec![Constraint::Revolute(build_revolute_constraint(
+        rf_leg_frame,
+        rf_thigh_frame,
+        "right_front_leg",
+        urdf,
+    ))]);
+
     articulated.add_relative_range_constraints(vec![RelativeRangeConstraint::new(
         lf_motor_arm_frame,
         lf_thigh_frame,
         (-14.48 as Float).to_radians(),
         (8.48 as Float).to_radians(),
+    )]);
+
+    articulated.add_relative_range_constraints(vec![RelativeRangeConstraint::new(
+        rf_motor_arm_frame,
+        rf_thigh_frame,
+        (-8.48 as Float).to_radians(),
+        (14.48 as Float).to_radians(),
     )]);
 
     articulated.add_range_constraints(vec![RangeConstraint::new(

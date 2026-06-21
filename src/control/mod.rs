@@ -6,14 +6,17 @@ use gorilla_physics::{
 };
 
 pub struct QuaddleController {
-    pub servos: [PetoiP1S; 1],
+    pub servos: [PetoiP1S; 2],
 }
 
 impl QuaddleController {
     pub fn new() -> Self {
-        let mut servos = [PetoiP1S::new(); 1];
+        let mut servos = [PetoiP1S::new(); 2];
         // servos[0].command_angle = Some((0. as Float).to_radians());
-        servos[0].command_angle = Some((-90. as Float).to_radians());
+        let command_angles = [-90, 90];
+        for (i, servo) in servos.iter_mut().enumerate() {
+            servo.command_angle = Some((command_angles[i] as Float).to_radians());
+        }
 
         Self { servos }
     }
@@ -31,7 +34,7 @@ impl ArticulatedController for QuaddleController {
             torques.push(0.); // default to 0 torque for unactuated joints
         }
 
-        let actuated_joint_indices = [1];
+        let actuated_joint_indices = [1, 6];
 
         for i in 0..self.servos.len() {
             let index = actuated_joint_indices[i];
@@ -45,7 +48,7 @@ impl ArticulatedController for QuaddleController {
             torques[index] = torque;
         }
 
-        let damped_joint_indices = [0];
+        let damped_joint_indices = [0, 5];
         for index in damped_joint_indices {
             let v = vs[index];
             let torque = -2e-3 * v;
