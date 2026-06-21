@@ -3,7 +3,7 @@ use gorilla_physics::hybrid::control::NullArticulatedController;
 use gorilla_physics::{
     PI, WORLD_FRAME,
     hybrid::{
-        Hybrid,
+        Hybrid, Rigid,
         articulated::Articulated,
         mesh::URDFMeshes,
         rigid::helper::{build_joint, build_revolute_constraint, build_rigid},
@@ -40,169 +40,40 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     ));
 
     // left-front
-    let lf_thigh_frame = "left_front_thigh";
-    let lf_thigh = build_rigid(lf_thigh_frame, "thigh", urdf, meshes);
-    let lf_thigh_joint = build_joint(
-        lf_thigh_frame,
-        body_frame,
-        "left_front_thigh",
-        urdf,
-        -Vector3::z_axis(),
-        0.,
-    );
-    // let lf_thigh_joint = build_fixed_joint(lf_thigh_frame, body_frame, "left_front_thigh", urdf);
-
-    let lf_motor_arm_frame = "left_front_motor";
-    let lf_motor_arm = build_rigid(lf_motor_arm_frame, "motor_arm", urdf, meshes);
-    let lf_motor_arm_joint = build_joint(
-        lf_motor_arm_frame,
-        body_frame,
-        "left_front_motor_arm",
-        urdf,
-        -Vector3::z_axis(),
-        0.,
-    );
-
-    let lf_spring_frame = "left_front_spring";
-    let lf_spring = build_rigid(lf_spring_frame, "long_spring", urdf, meshes);
-    let lf_spring_joint = build_joint(
-        lf_spring_frame,
-        lf_motor_arm_frame,
-        "left_front_spring",
-        urdf,
-        -Vector3::z_axis(),
-        0.,
-    );
-
-    let lf_leg_frame = "left_front_leg";
-    let lf_leg = build_rigid(lf_leg_frame, "leg", urdf, meshes);
-    let lf_leg_joint = build_joint(
-        lf_leg_frame,
-        lf_spring_frame,
-        "left_front_leg",
-        urdf,
-        -Vector3::z_axis(),
-        0.,
-    );
-
-    let lf_wheel_frame = "left_front_wheel";
-    let lf_wheel = build_rigid(lf_wheel_frame, "wheel", urdf, meshes);
-    let lf_wheel_joint = build_joint(
-        lf_wheel_frame,
-        lf_leg_frame,
-        "left_front_wheel",
-        urdf,
-        -Vector3::z_axis(),
-        0.,
-    );
+    let (lf_frames, lf_rigids, lf_joints) = build_leg("left", "front", body_frame, urdf, meshes);
 
     // right-front
-    let rf_thigh_frame = "right_front_thigh";
-    let rf_thigh = build_rigid(rf_thigh_frame, "thigh_right", urdf, meshes);
-    let rf_thigh_joint = build_joint(
-        rf_thigh_frame,
-        body_frame,
-        "right_front_thigh",
-        urdf,
-        -Vector3::z_axis(),
-        0.,
-    );
-
-    let rf_motor_arm_frame = "right_front_motor";
-    let rf_motor_arm = build_rigid(rf_motor_arm_frame, "motor_arm_2", urdf, meshes);
-    let rf_motor_arm_joint = build_joint(
-        rf_motor_arm_frame,
-        body_frame,
-        "right_front_motor_arm",
-        urdf,
-        -Vector3::z_axis(),
-        0.,
-    );
-
-    let rf_spring_frame = "right_front_spring";
-    let rf_spring = build_rigid(rf_spring_frame, "long_spring_right", urdf, meshes);
-    let rf_spring_joint = build_joint(
-        rf_spring_frame,
-        rf_motor_arm_frame,
-        "right_front_spring",
-        urdf,
-        -Vector3::z_axis(),
-        0.,
-    );
-
-    let rf_leg_frame = "right_front_leg";
-    let rf_leg = build_rigid(rf_leg_frame, "leg_right", urdf, meshes);
-    let rf_leg_joint = build_joint(
-        rf_leg_frame,
-        rf_spring_frame,
-        "right_front_leg",
-        urdf,
-        -Vector3::z_axis(),
-        0.,
-    );
-
-    // let closing_1_frame = "closing_1";
-    // let mut closing_1 = build_rigid(closing_1_frame, "closing_left_front_leg_1", urdf, meshes);
-    // closing_1.add_collision_sphere_at(&Vector3::zeros(), 0.01);
-    // let closing_1_joint = build_fixed_joint(
-    //     closing_1_frame,
-    //     lf_leg_frame,
-    //     "closing_left_front_leg_1_frame",
-    //     urdf,
-    // );
-
-    // let closing_2_frame = "closing_2";
-    // let mut closing_2 = build_rigid(closing_2_frame, "closing_left_front_leg_2", urdf, meshes);
-    // closing_2.add_collision_sphere_at(&Vector3::zeros(), 0.01);
-    // let closing_2_joint = build_fixed_joint(
-    //     closing_2_frame,
-    //     lf_thigh_frame,
-    //     "closing_left_front_leg_2_frame",
-    //     urdf,
-    // );
+    let (rf_frames, rf_rigids, rf_joints) = build_leg("right", "front", body_frame, urdf, meshes);
 
     let mut articulated = Articulated::new(
-        vec![
-            body,
-            lf_thigh,
-            lf_motor_arm,
-            lf_spring,
-            lf_leg,
-            lf_wheel,
-            rf_thigh,
-            rf_motor_arm,
-            rf_spring,
-            rf_leg,
-            // closing_1,
-            // closing_2,
-        ],
-        vec![
-            body_joint,
-            lf_thigh_joint,
-            lf_motor_arm_joint,
-            lf_spring_joint,
-            lf_leg_joint,
-            lf_wheel_joint,
-            rf_thigh_joint,
-            rf_motor_arm_joint,
-            rf_spring_joint,
-            rf_leg_joint,
-            // closing_1_joint,
-            // closing_2_joint,
-        ],
+        vec![body]
+            .into_iter()
+            .chain(lf_rigids)
+            .chain(rf_rigids)
+            .chain(vec![
+                // closing_1,
+                // closing_2,
+            ])
+            .collect(),
+        vec![body_joint]
+            .into_iter()
+            .chain(lf_joints)
+            .chain(rf_joints)
+            .chain(vec![
+                // closing_1_joint,
+                // closing_2_joint,
+            ])
+            .collect(),
     );
 
+    let lf_leg_frame = &lf_frames[3];
+    let lf_thigh_frame = &lf_frames[0];
+    let lf_motor_arm_frame = &lf_frames[1];
+    let lf_wheel_frame = &lf_frames[4];
     articulated.add_constraints(vec![Constraint::Revolute(build_revolute_constraint(
         lf_leg_frame,
         lf_thigh_frame,
         "left_front_leg",
-        urdf,
-    ))]);
-
-    articulated.add_constraints(vec![Constraint::Revolute(build_revolute_constraint(
-        rf_leg_frame,
-        rf_thigh_frame,
-        "right_front_leg",
         urdf,
     ))]);
 
@@ -213,6 +84,23 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
         (8.48 as Float).to_radians(),
     )]);
 
+    articulated.add_range_constraints(vec![RangeConstraint::new(
+        lf_wheel_frame,
+        (0. as Float).to_radians(),
+        (30. as Float).to_radians(),
+    )]);
+
+    let rf_leg_frame = &rf_frames[3];
+    let rf_thigh_frame = &rf_frames[0];
+    let rf_motor_arm_frame = &rf_frames[1];
+    let rf_wheel_frame = &rf_frames[4];
+    articulated.add_constraints(vec![Constraint::Revolute(build_revolute_constraint(
+        rf_leg_frame,
+        rf_thigh_frame,
+        "right_front_leg",
+        urdf,
+    ))]);
+
     articulated.add_relative_range_constraints(vec![RelativeRangeConstraint::new(
         rf_motor_arm_frame,
         rf_thigh_frame,
@@ -221,7 +109,7 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     )]);
 
     articulated.add_range_constraints(vec![RangeConstraint::new(
-        lf_wheel_frame,
+        rf_wheel_frame,
         (0. as Float).to_radians(),
         (30. as Float).to_radians(),
     )]);
@@ -247,4 +135,90 @@ pub async fn createQuaddle() -> InterfaceHybrid {
     state.set_controller(0, controller);
 
     InterfaceHybrid::new(state)
+}
+
+// side be "left" or "right"
+// direction be "front" or "back"
+fn build_leg(
+    side: &str,
+    direction: &str,
+    body_frame: &str,
+    urdf: &Robot,
+    meshes: &mut URDFMeshes,
+) -> (Vec<String>, Vec<Rigid>, Vec<Joint>) {
+    let name = format!("{}_{}", side, direction);
+
+    // left-front
+    let thigh_frame = format!("{}_thigh", name); // same as link name
+    let thigh = build_rigid(&thigh_frame, &thigh_frame, urdf, meshes);
+    let thigh_joint = build_joint(
+        &thigh_frame,
+        body_frame,
+        &format!("{}_thigh", name),
+        urdf,
+        -Vector3::z_axis(),
+        0.,
+    );
+    // let lf_thigh_joint = build_fixed_joint(lf_thigh_frame, body_frame, "left_front_thigh", urdf);
+
+    let motor_arm_frame = format!("{}_motor_arm", name);
+    let motor_arm = build_rigid(&motor_arm_frame, &motor_arm_frame, urdf, meshes);
+    let motor_arm_joint = build_joint(
+        &motor_arm_frame,
+        body_frame,
+        &format!("{}_motor_arm", name),
+        urdf,
+        -Vector3::z_axis(),
+        0.,
+    );
+
+    let spring_frame = format!("{}_spring", name);
+    let spring = build_rigid(&spring_frame, &spring_frame, urdf, meshes);
+    let spring_joint = build_joint(
+        &spring_frame,
+        &motor_arm_frame,
+        &format!("{}_spring", name),
+        urdf,
+        -Vector3::z_axis(),
+        0.,
+    );
+
+    let leg_frame = format!("{}_leg", name);
+    let leg = build_rigid(&leg_frame, &leg_frame, urdf, meshes);
+    let leg_joint = build_joint(
+        &leg_frame,
+        &spring_frame,
+        &format!("{}_leg", name),
+        urdf,
+        -Vector3::z_axis(),
+        0.,
+    );
+
+    let wheel_frame = format!("{}_wheel", name);
+    let wheel = build_rigid(&wheel_frame, &wheel_frame, urdf, meshes);
+    let wheel_joint = build_joint(
+        &wheel_frame,
+        &leg_frame,
+        &format!("{}_wheel", name),
+        urdf,
+        -Vector3::z_axis(),
+        0.,
+    );
+
+    let frames = vec![
+        thigh_frame,
+        motor_arm_frame,
+        spring_frame,
+        leg_frame,
+        wheel_frame,
+    ];
+    let rigids = vec![thigh, motor_arm, spring, leg, wheel];
+    let joints = vec![
+        thigh_joint,
+        motor_arm_joint,
+        spring_joint,
+        leg_joint,
+        wheel_joint,
+    ];
+    (frames, rigids, joints)
 }
