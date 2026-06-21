@@ -7,23 +7,31 @@ use gorilla_physics::{
 
 pub struct QuaddleController {
     pub servos: [PetoiP1S; 4],
+
+    t: Float,
 }
+
+const DT: Float = 1. / 60. / 100.;
 
 impl QuaddleController {
     pub fn new() -> Self {
         let mut servos = [PetoiP1S::new(); 4];
         // servos[0].command_angle = Some((0. as Float).to_radians());
-        let command_angles = [-90, 90, -30, 30];
+        let command_angles = [0, 0, 0, 0];
         for (i, servo) in servos.iter_mut().enumerate() {
             servo.command_angle = Some((command_angles[i] as Float).to_radians());
         }
 
-        Self { servos }
+        Self { servos, t: 0. }
     }
 }
 
 impl ArticulatedController for QuaddleController {
     fn control(&mut self, articulated: &Articulated, input: &Vec<Float>) -> DVector<Float> {
+        let command_angle = self.t.sin() * 30.;
+        self.servos[0].command_angle = Some(command_angle.to_radians());
+        self.servos[3].command_angle = Some(-command_angle.to_radians());
+
         let mut torques = vec![];
 
         let qs = articulated.q();
@@ -54,6 +62,8 @@ impl ArticulatedController for QuaddleController {
             let torque = -2e-3 * v;
             torques[index] += torque;
         }
+
+        self.t += DT;
 
         DVector::from_vec(torques)
     }
