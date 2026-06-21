@@ -45,11 +45,19 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     // right-front
     let (rf_frames, rf_rigids, rf_joints) = build_leg("right", "front", body_frame, urdf, meshes);
 
+    // right-back
+    let (rb_frames, rb_rigids, rb_joints) = build_leg("right", "back", body_frame, urdf, meshes);
+
+    // left-back
+    let (lb_frames, lb_rigids, lb_joints) = build_leg("left", "back", body_frame, urdf, meshes);
+
     let mut articulated = Articulated::new(
         vec![body]
             .into_iter()
             .chain(lf_rigids)
             .chain(rf_rigids)
+            .chain(rb_rigids)
+            .chain(lb_rigids)
             .chain(vec![
                 // closing_1,
                 // closing_2,
@@ -59,6 +67,8 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
             .into_iter()
             .chain(lf_joints)
             .chain(rf_joints)
+            .chain(rb_joints)
+            .chain(lb_joints)
             .chain(vec![
                 // closing_1_joint,
                 // closing_2_joint,
@@ -66,53 +76,10 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
             .collect(),
     );
 
-    let lf_leg_frame = &lf_frames[3];
-    let lf_thigh_frame = &lf_frames[0];
-    let lf_motor_arm_frame = &lf_frames[1];
-    let lf_wheel_frame = &lf_frames[4];
-    articulated.add_constraints(vec![Constraint::Revolute(build_revolute_constraint(
-        lf_leg_frame,
-        lf_thigh_frame,
-        "left_front_leg",
-        urdf,
-    ))]);
-
-    articulated.add_relative_range_constraints(vec![RelativeRangeConstraint::new(
-        lf_motor_arm_frame,
-        lf_thigh_frame,
-        (-14.48 as Float).to_radians(),
-        (8.48 as Float).to_radians(),
-    )]);
-
-    articulated.add_range_constraints(vec![RangeConstraint::new(
-        lf_wheel_frame,
-        (0. as Float).to_radians(),
-        (30. as Float).to_radians(),
-    )]);
-
-    let rf_leg_frame = &rf_frames[3];
-    let rf_thigh_frame = &rf_frames[0];
-    let rf_motor_arm_frame = &rf_frames[1];
-    let rf_wheel_frame = &rf_frames[4];
-    articulated.add_constraints(vec![Constraint::Revolute(build_revolute_constraint(
-        rf_leg_frame,
-        rf_thigh_frame,
-        "right_front_leg",
-        urdf,
-    ))]);
-
-    articulated.add_relative_range_constraints(vec![RelativeRangeConstraint::new(
-        rf_motor_arm_frame,
-        rf_thigh_frame,
-        (-8.48 as Float).to_radians(),
-        (14.48 as Float).to_radians(),
-    )]);
-
-    articulated.add_range_constraints(vec![RangeConstraint::new(
-        rf_wheel_frame,
-        (0. as Float).to_radians(),
-        (30. as Float).to_radians(),
-    )]);
+    add_constraints("left", "front", &lf_frames, &mut articulated, urdf);
+    add_constraints("right", "front", &rf_frames, &mut articulated, urdf);
+    add_constraints("right", "back", &rb_frames, &mut articulated, urdf);
+    add_constraints("left", "back", &lb_frames, &mut articulated, urdf);
 
     state.add_articulated(articulated);
 
@@ -221,4 +188,41 @@ fn build_leg(
         wheel_joint,
     ];
     (frames, rigids, joints)
+}
+
+fn add_constraints(
+    side: &str,
+    direction: &str,
+    frames: &Vec<String>,
+    articulated: &mut Articulated,
+    urdf: &Robot,
+) {
+    let leg_frame = &frames[3];
+    let thigh_frame = &frames[0];
+    let motor_arm_frame = &frames[1];
+    let wheel_frame = &frames[4];
+
+    let name = format!("{}_{}", side, direction);
+
+    articulated.add_constraints(vec![Constraint::Revolute(build_revolute_constraint(
+        leg_frame,
+        thigh_frame,
+        &format!("{}_leg", name),
+        urdf,
+    ))]);
+
+    let lower = if side == "left" { -14.48 } else { -8.48 };
+    let upper = if side == "left" { 8.48 } else { 14.48 };
+    articulated.add_relative_range_constraints(vec![RelativeRangeConstraint::new(
+        motor_arm_frame,
+        thigh_frame,
+        (lower as Float).to_radians(),
+        (upper as Float).to_radians(),
+    )]);
+
+    articulated.add_range_constraints(vec![RangeConstraint::new(
+        wheel_frame,
+        (0. as Float).to_radians(),
+        (30. as Float).to_radians(),
+    )]);
 }
