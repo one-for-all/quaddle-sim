@@ -5,6 +5,8 @@ use gorilla_physics::{
     types::Float,
 };
 
+pub(crate) mod esp32s3;
+
 pub struct QuaddleController {
     pub servos: [PetoiP1S; 4],
 
@@ -52,7 +54,6 @@ impl ArticulatedController for QuaddleController {
             let v = vs[index];
             self.servos[i].angle = q;
             self.servos[i].vel = v;
-            let mult = if i == 0 { 0.1 } else { 0.1 };
             let torque = self.servos[i].torque() * 0.1;
             // println!("q: {}, v: {}, tau: {}", q, v, torque);
             torques[index] = torque;

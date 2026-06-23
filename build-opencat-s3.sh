@@ -21,7 +21,7 @@ xtensa-esp32-elf-nm -n $SOURCE_DIR/build/OpenCatEsp32S3.ino.elf > $SOURCE_DIR/bu
 
 
 # Initial build files
-readonly OUT_DIR="www/static/$PROJECT/build/"
+readonly OUT_DIR="www/static/$PROJECT/build"
 mkdir -p $OUT_DIR
 cp $SOURCE_DIR/build/${PROJECT}.ino.bootloader.bin $OUT_DIR
 cp $SOURCE_DIR/build/${PROJECT}.ino.partitions.bin $OUT_DIR
@@ -31,9 +31,11 @@ cp $SOURCE_DIR/bootloader_symbols.txt $OUT_DIR
 cp -r ../esp32rs/rom www/static/
 
 # Display files
-cp $SOURCE_DIR/${PROJECT}.ino www/src/assets/$PROJECT/
-cp -r $SOURCE_DIR/src www/src/assets/$PROJECT/
+readonly ASSETS_DIR="www/src/assets"
+mkdir -p $ASSETS_DIR/$PROJECT
+cp $SOURCE_DIR/${PROJECT}.ino $ASSETS_DIR/${PROJECT}
+cp -r $SOURCE_DIR/src $ASSETS_DIR/${PROJECT}
 
 # default compiled binary and symbol for when user hits reset
-cp $SOURCE_DIR/build/${PROJECT}.ino.bin www/src/assets/
-cp $SOURCE_DIR/build/symbols.txt www/src/assets/
+cp $SOURCE_DIR/build/${PROJECT}.ino.bin $ASSETS_DIR
+cp $SOURCE_DIR/build/symbols.txt $ASSETS_DIR

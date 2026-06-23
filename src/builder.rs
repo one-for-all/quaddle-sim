@@ -19,7 +19,7 @@ use gorilla_physics::{
 use urdf_rs::Robot;
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
-use crate::control::QuaddleController;
+use crate::control::{QuaddleController, esp32s3::QuaddleESP32S3Controller};
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 use {
@@ -39,17 +39,47 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
         &vec![0., 0., -PI / 2.],
     ));
 
+    let zero_positions: [Float; _] = [90., 135., 210., 60., 240., 30.];
+
     // left-front
-    let (lf_frames, lf_rigids, lf_joints) = build_leg("left", "front", body_frame, urdf, meshes);
+    let (lf_frames, lf_rigids, lf_joints) = build_leg(
+        "left",
+        "front",
+        body_frame,
+        urdf,
+        meshes,
+        zero_positions[2].to_radians(),
+    );
 
     // right-front
-    let (rf_frames, rf_rigids, rf_joints) = build_leg("right", "front", body_frame, urdf, meshes);
+    let (rf_frames, rf_rigids, rf_joints) = build_leg(
+        "right",
+        "front",
+        body_frame,
+        urdf,
+        meshes,
+        zero_positions[3].to_radians(),
+    );
 
     // right-back
-    let (rb_frames, rb_rigids, rb_joints) = build_leg("right", "back", body_frame, urdf, meshes);
+    let (rb_frames, rb_rigids, rb_joints) = build_leg(
+        "right",
+        "back",
+        body_frame,
+        urdf,
+        meshes,
+        zero_positions[4].to_radians(),
+    );
 
     // left-back
-    let (lb_frames, lb_rigids, lb_joints) = build_leg("left", "back", body_frame, urdf, meshes);
+    let (lb_frames, lb_rigids, lb_joints) = build_leg(
+        "left",
+        "back",
+        body_frame,
+        urdf,
+        meshes,
+        zero_positions[5].to_radians(),
+    );
 
     let mut articulated = Articulated::new(
         vec![body]
@@ -76,10 +106,38 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
             .collect(),
     );
 
-    add_constraints("left", "front", &lf_frames, &mut articulated, urdf);
-    add_constraints("right", "front", &rf_frames, &mut articulated, urdf);
-    add_constraints("right", "back", &rb_frames, &mut articulated, urdf);
-    add_constraints("left", "back", &lb_frames, &mut articulated, urdf);
+    add_constraints(
+        "left",
+        "front",
+        &lf_frames,
+        &mut articulated,
+        urdf,
+        zero_positions[2],
+    );
+    add_constraints(
+        "right",
+        "front",
+        &rf_frames,
+        &mut articulated,
+        urdf,
+        zero_positions[3],
+    );
+    add_constraints(
+        "right",
+        "back",
+        &rb_frames,
+        &mut articulated,
+        urdf,
+        zero_positions[4],
+    );
+    add_constraints(
+        "left",
+        "back",
+        &lb_frames,
+        &mut articulated,
+        urdf,
+        zero_positions[5],
+    );
 
     state.add_articulated(articulated);
 
@@ -98,7 +156,8 @@ pub async fn createQuaddle() -> InterfaceHybrid {
 
     let mut state = build_quaddle(&mut meshes, &urdf_robot);
 
-    let controller = QuaddleController::new();
+    // let controller = QuaddleController::new();
+    let controller = QuaddleESP32S3Controller::new().await;
     state.set_controller(0, controller);
 
     InterfaceHybrid::new(state)
@@ -112,6 +171,7 @@ fn build_leg(
     body_frame: &str,
     urdf: &Robot,
     meshes: &mut URDFMeshes,
+    zero_q: Float, // zero position q in radians
 ) -> (Vec<String>, Vec<Rigid>, Vec<Joint>) {
     let name = format!("{}_{}", side, direction);
 
@@ -136,7 +196,7 @@ fn build_leg(
         &format!("{}_motor_arm", name),
         urdf,
         -Vector3::z_axis(),
-        0.,
+        zero_q,
     );
 
     let spring_frame = format!("{}_spring", name);
@@ -196,6 +256,7 @@ fn add_constraints(
     frames: &Vec<String>,
     articulated: &mut Articulated,
     urdf: &Robot,
+    zero_q: Float, // zero position in degrees
 ) {
     let leg_frame = &frames[3];
     let thigh_frame = &frames[0];
@@ -211,8 +272,8 @@ fn add_constraints(
         urdf,
     ))]);
 
-    let lower = if side == "left" { -14.48 } else { -8.48 };
-    let upper = if side == "left" { 8.48 } else { 14.48 };
+    let lower = zero_q + if side == "left" { -14.48 } else { -8.48 };
+    let upper = zero_q + if side == "left" { 8.48 } else { 14.48 };
     articulated.add_relative_range_constraints(vec![RelativeRangeConstraint::new(
         motor_arm_frame,
         thigh_frame,

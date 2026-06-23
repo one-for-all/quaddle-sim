@@ -28,3 +28,6 @@ www/static/mesh
 
 www/static/OpenCatESP32S3
 www/static/rom
+www/src/assets/OpenCatESP32S3
+www/src/assets/OpenCatESP32S3.ino.bin
+www/src/assets/symbols.txt
