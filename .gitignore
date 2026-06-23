@@ -25,3 +25,6 @@ convert_stl_to_obj.py
 update_urdf.sh
 www/static/robot.urdf
 www/static/mesh
+
+www/static/OpenCatESP32S3
+www/static/rom
