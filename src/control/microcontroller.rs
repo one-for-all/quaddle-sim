@@ -127,9 +127,11 @@ impl ArticulatedController for QuaddleESP32S3Controller {
         let mut index = body_dof;
         let mut actuated_joint_indices = vec![];
         let mut damped_joint_indices = vec![];
+        let mut wheel_joint_indices = vec![];
         for _ in 0..4 {
             actuated_joint_indices.push(index + 1);
             damped_joint_indices.push(index);
+            wheel_joint_indices.push(index + 4);
             index += leg_dof;
         }
         // let actuated_joint_indices = [1, 6, 11, 16];
@@ -137,17 +139,27 @@ impl ArticulatedController for QuaddleESP32S3Controller {
 
         for (i, servo) in self.leg_servos.iter_mut().enumerate() {
             let joint_index = actuated_joint_indices[i];
-            let q = qs[joint_index + 1];
+            let offset = if body_dof != 0 { 1 } else { 0 };
+            let q = qs[joint_index + offset];
             let v = vs[joint_index];
             servo.angle = q;
             servo.vel = v;
-            let torque = servo.torque() * 0.5;
+            let torque = servo.torque() * 0.2;
             torques[joint_index] += torque;
         }
 
         for joint_index in damped_joint_indices {
             let v = vs[joint_index];
             let torque = -2e-3 * v;
+            torques[joint_index] += torque;
+        }
+
+        // virtual springs at the wheel joint
+        for joint_index in wheel_joint_indices {
+            let offset = if body_dof != 0 { 1 } else { 0 };
+            let q = qs[joint_index + offset];
+            let diff = q - (30 as Float).to_radians();
+            let torque = -2e-3 * diff;
             torques[joint_index] += torque;
         }
 

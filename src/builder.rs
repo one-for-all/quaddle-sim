@@ -31,6 +31,7 @@ use {
 
 pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     let mut state = Hybrid::empty();
+    state.set_friction_mu(1.0);
 
     let body_frame = "body";
     let mut body = build_rigid(body_frame, "body", urdf, meshes);
