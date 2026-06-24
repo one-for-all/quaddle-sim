@@ -123,21 +123,29 @@ impl ArticulatedController for QuaddleESP32S3Controller {
             torques.push(0.); // default to 0 torque for unactuated joints
         }
 
-        let actuated_joint_indices = [1, 6, 11, 16];
+        let leg_dof = 6;
+        let mut index = body_dof;
+        let mut actuated_joint_indices = vec![];
+        let mut damped_joint_indices = vec![];
+        for _ in 0..4 {
+            actuated_joint_indices.push(index + 1);
+            damped_joint_indices.push(index);
+            index += leg_dof;
+        }
+        // let actuated_joint_indices = [1, 6, 11, 16];
+        // let damped_joint_indices = [0, 5, 10, 15];
 
         for (i, servo) in self.leg_servos.iter_mut().enumerate() {
-            let joint_index = body_dof + actuated_joint_indices[i];
+            let joint_index = actuated_joint_indices[i];
             let q = qs[joint_index + 1];
             let v = vs[joint_index];
             servo.angle = q;
             servo.vel = v;
-            let torque = servo.torque() * 0.2;
+            let torque = servo.torque() * 0.5;
             torques[joint_index] += torque;
         }
 
-        let damped_joint_indices = [0, 5, 10, 15];
         for joint_index in damped_joint_indices {
-            let joint_index = body_dof + joint_index;
             let v = vs[joint_index];
             let torque = -2e-3 * v;
             torques[joint_index] += torque;

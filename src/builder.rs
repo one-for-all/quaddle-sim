@@ -34,7 +34,7 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
 
     let body_frame = "body";
     let mut body = build_rigid(body_frame, "body", urdf, meshes);
-    add_body_collision(&mut body, urdf);
+    add_quaddle_body_collision(&mut body, urdf);
     let body_joint = Joint::new_floating(Transform3D::new_xyz_rpy(
         body_frame,
         WORLD_FRAME,
@@ -238,20 +238,34 @@ fn build_leg(
         0.,
     );
 
+    let wheel_tip_frame = format!("{}_wheel_tip", name);
+    let mut wheel_tip = build_rigid(&wheel_tip_frame, &wheel_tip_frame, urdf, meshes);
+    add_quaddle_wheel_tip_collision(&mut wheel_tip, &name, urdf);
+    let wheel_tip_joint = build_joint(
+        &wheel_tip_frame,
+        &wheel_frame,
+        &format!("{}_wheel_tip", name),
+        urdf,
+        -Vector3::z_axis(),
+        0.,
+    );
+
     let frames = vec![
         thigh_frame,
         motor_arm_frame,
         spring_frame,
         leg_frame,
         wheel_frame,
+        wheel_tip_frame,
     ];
-    let rigids = vec![thigh, motor_arm, spring, leg, wheel];
+    let rigids = vec![thigh, motor_arm, spring, leg, wheel, wheel_tip];
     let joints = vec![
         thigh_joint,
         motor_arm_joint,
         spring_joint,
         leg_joint,
         wheel_joint,
+        wheel_tip_joint,
     ];
     (frames, rigids, joints)
 }
@@ -304,8 +318,14 @@ fn add_quaddle_leg_collision(rigid: &mut Rigid, which_leg: &str, urdf: &Robot) {
     rigid.add_collision_sphere_at(&Vector3::from(point_joint.origin.xyz.0), 0.0025);
 }
 
+fn add_quaddle_wheel_tip_collision(rigid: &mut Rigid, which_leg: &str, urdf: &Robot) {
+    let joint_name = format!("{}_wheel_tip_collision_frame", which_leg);
+    let point_joint = urdf.joints.iter().find(|&j| j.name == joint_name).unwrap();
+    rigid.add_collision_sphere_at(&Vector3::from(point_joint.origin.xyz.0), 0.002);
+}
+
 // body length 10.5cm, width 7.1cm, height 2.7cm
-fn add_body_collision(rigid: &mut Rigid, urdf: &Robot) {
+fn add_quaddle_body_collision(rigid: &mut Rigid, urdf: &Robot) {
     let joint_name = "body_collision_frame";
     let point_joint = urdf.joints.iter().find(|&j| j.name == joint_name).unwrap();
     let p = Vector3::from(point_joint.origin.xyz.0);
