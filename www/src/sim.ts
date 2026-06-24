@@ -19,7 +19,7 @@ export function initSimulator() {
     };
     simulator.graphics.lookAt(cameraPosition);
 
-    simulator.run(100, 0);
+    simulator.run(50, 0);
 
     setSimulator(simulator);
 
