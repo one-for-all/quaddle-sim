@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use esp32rs::{
     esp32::CPU_FREQUENCY,
     esp32s3::esp32s3::{ESP32S3, S3_CPU_SLOWDOWN_FACTOR},
@@ -16,6 +18,8 @@ use gorilla_physics::{
 pub(crate) struct QuaddleESP32S3Controller {
     esp32s3: ESP32S3,
     leg_servos: [PetoiP1S; 4],
+
+    uart_payload: VecDeque<u8>, // data pending to be fed into esp32 uart0
 }
 
 impl QuaddleESP32S3Controller {
@@ -76,6 +80,7 @@ impl QuaddleESP32S3Controller {
         Self {
             esp32s3,
             leg_servos: [PetoiP1S::new(); 4],
+            uart_payload: VecDeque::new(),
         }
     }
 }
@@ -90,6 +95,10 @@ impl ArticulatedController for QuaddleESP32S3Controller {
 
         for _ in 0..n_steps {
             self.esp32s3.step(cycle_dt);
+            if let Some(char) = self.uart_payload.pop_front() {
+                self.esp32s3.feed_uart(char);
+            }
+
             for (i, servo) in self.leg_servos.iter_mut().enumerate() {
                 if let Some(pin) = self.esp32s3.read_pin(pins[i]) {
                     servo.step(cycle_dt, pin);
@@ -130,5 +139,15 @@ impl ArticulatedController for QuaddleESP32S3Controller {
         }
 
         DVector::from_vec(torques)
+    }
+
+    /// Return the content in UART
+    fn get_uart(&self) -> String {
+        self.esp32s3.get_uart()
+    }
+
+    /// Send UART data to esp32
+    fn send_uart(&mut self, payload: &str) {
+        self.uart_payload.extend(String::from(payload).into_bytes());
     }
 }

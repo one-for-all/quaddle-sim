@@ -30,6 +30,7 @@
         </style>
         <link rel="stylesheet" href="css/main.css" />
         <link rel="stylesheet" href="css/sim.css" />
+        <link rel="stylesheet" href="css/serial-monitor.css" />
         <link rel="stylesheet" href="css/overlay.css" />
     </head>
     <body>
@@ -37,6 +38,30 @@
             <!--robot simulation view with serial monitor -->
             <div id="threejs"></div>
             <!--UI componenets that float above everying else-->
+            <div class="bottom-container">
+                <div class="build-output" id="buildOutput">
+                    <button class="close-output" id="closeOutput">×</button>
+                    <div id="outputContent"></div>
+                    <div id="serialMonitor"></div>
+                </div>
+                <div class="serial-input-bar" id="serialInputBar">
+                    <input
+                        class="serial-input"
+                        id="serialInput"
+                        type="text"
+                        placeholder="serial monitor input..."
+                        autocomplete="off"
+                        spellcheck="false"
+                    />
+                    <button
+                        class="serial-send"
+                        id="serialSend"
+                        title="Send (Enter)"
+                    >
+                        Send
+                    </button>
+                </div>
+            </div>
             <div class="overlay">
                 <div id="realtimeRatio">realtime rate: 1.0</div>
             </div>
