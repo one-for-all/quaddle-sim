@@ -7,10 +7,8 @@ use esp32rs::{
     symbols::Symbols,
 };
 use gorilla_physics::{
-    hybrid::{
-        articulated::{self, Articulated},
-        control::ArticulatedController,
-    },
+    hybrid::{articulated::Articulated, control::ArticulatedController},
+    joint::Joint,
     na::DVector,
     types::Float,
 };
@@ -111,6 +109,12 @@ impl ArticulatedController for QuaddleESP32S3Controller {
 
     fn control(&mut self, articulated: &Articulated, input: &Vec<Float>) -> DVector<Float> {
         let mut torques = vec![];
+        let body_dof = if let Joint::FloatingJoint(_) = articulated.joints[0] {
+            6
+        } else {
+            0
+        };
+
         let qs = articulated.q();
         let vs = articulated.v();
 
@@ -122,17 +126,18 @@ impl ArticulatedController for QuaddleESP32S3Controller {
         let actuated_joint_indices = [1, 6, 11, 16];
 
         for (i, servo) in self.leg_servos.iter_mut().enumerate() {
-            let joint_index = actuated_joint_indices[i];
-            let q = qs[joint_index];
+            let joint_index = body_dof + actuated_joint_indices[i];
+            let q = qs[joint_index + 1];
             let v = vs[joint_index];
             servo.angle = q;
             servo.vel = v;
-            let torque = servo.torque() * 0.1;
+            let torque = servo.torque() * 0.2;
             torques[joint_index] += torque;
         }
 
         let damped_joint_indices = [0, 5, 10, 15];
         for joint_index in damped_joint_indices {
+            let joint_index = body_dof + joint_index;
             let v = vs[joint_index];
             let torque = -2e-3 * v;
             torques[joint_index] += torque;

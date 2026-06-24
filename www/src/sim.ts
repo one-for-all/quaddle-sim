@@ -7,7 +7,7 @@ export function initSimulator() {
   let interfaceSimulator = null;
   let showGrid = true;
   let simulator = new Simulator(interfaceSimulator, showGrid);
-  simulator.showHalfspaces = false;
+  simulator.showHalfspaces = true;
 
   createQuaddle().then((state) => {
     simulator.addHybrid(state);

@@ -5,7 +5,7 @@ use gorilla_physics::{
     types::Float,
 };
 
-pub(crate) mod esp32s3;
+pub(crate) mod microcontroller;
 
 pub struct QuaddleController {
     pub servos: [PetoiP1S; 4],

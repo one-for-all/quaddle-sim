@@ -1,5 +1,3 @@
-#[cfg(any(target_arch = "wasm32", rust_analyzer))]
-use gorilla_physics::hybrid::control::NullArticulatedController;
 use gorilla_physics::{
     PI, WORLD_FRAME,
     hybrid::{
@@ -12,14 +10,18 @@ use gorilla_physics::{
         Joint,
         constraint::{Constraint, RangeConstraint, RelativeRangeConstraint},
     },
-    na::Vector3,
+    na::{Vector3, vector},
     spatial::transform::Transform3D,
     types::Float,
+};
+#[cfg(any(target_arch = "wasm32", rust_analyzer))]
+use gorilla_physics::{
+    collision::halfspace::HalfSpace, hybrid::control::NullArticulatedController,
 };
 use urdf_rs::Robot;
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
-use crate::control::{QuaddleController, esp32s3::QuaddleESP32S3Controller};
+use crate::control::{QuaddleController, microcontroller::QuaddleESP32S3Controller};
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 use {
@@ -31,11 +33,12 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     let mut state = Hybrid::empty();
 
     let body_frame = "body";
-    let body = build_rigid(body_frame, "body", urdf, meshes);
-    let body_joint = Joint::new_fixed(Transform3D::new_xyz_rpy(
+    let mut body = build_rigid(body_frame, "body", urdf, meshes);
+    add_body_collision(&mut body, urdf);
+    let body_joint = Joint::new_floating(Transform3D::new_xyz_rpy(
         body_frame,
         WORLD_FRAME,
-        &vec![0., 0., 0.],
+        &vec![0., 0., 0.06],
         &vec![0., 0., -PI / 2.],
     ));
 
@@ -155,6 +158,8 @@ pub async fn createQuaddle() -> InterfaceHybrid {
     let mut meshes = URDFMeshes::new(&urdf_robot).await;
 
     let mut state = build_quaddle(&mut meshes, &urdf_robot);
+    state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
+    state.articulated[0].show_visual = false;
 
     // let controller = QuaddleController::new();
     let controller = QuaddleESP32S3Controller::new().await;
@@ -211,7 +216,8 @@ fn build_leg(
     );
 
     let leg_frame = format!("{}_leg", name);
-    let leg = build_rigid(&leg_frame, &leg_frame, urdf, meshes);
+    let mut leg = build_rigid(&leg_frame, &leg_frame, urdf, meshes);
+    add_quaddle_leg_collision(&mut leg, &name, urdf);
     let leg_joint = build_joint(
         &leg_frame,
         &spring_frame,
@@ -286,4 +292,26 @@ fn add_constraints(
         (0. as Float).to_radians(),
         (30. as Float).to_radians(),
     )]);
+}
+
+fn add_quaddle_leg_collision(rigid: &mut Rigid, which_leg: &str, urdf: &Robot) {
+    let joint_name = format!("{}_foot_frame", which_leg);
+    let point_joint = urdf.joints.iter().find(|&j| j.name == joint_name).unwrap();
+    rigid.add_collision_sphere_at(&Vector3::from(point_joint.origin.xyz.0), 0.0035);
+
+    let joint_name = format!("{}_knee_frame", which_leg);
+    let point_joint = urdf.joints.iter().find(|&j| j.name == joint_name).unwrap();
+    rigid.add_collision_sphere_at(&Vector3::from(point_joint.origin.xyz.0), 0.0025);
+}
+
+// body length 10.5cm, width 7.1cm, height 2.7cm
+fn add_body_collision(rigid: &mut Rigid, urdf: &Robot) {
+    let joint_name = "body_collision_frame";
+    let point_joint = urdf.joints.iter().find(|&j| j.name == joint_name).unwrap();
+    let p = Vector3::from(point_joint.origin.xyz.0);
+    let w = 0.071;
+    let d = 0.105;
+    let h = 0.027;
+    let com = p - vector![0., 0., h / 2.];
+    rigid.add_collision_cuboid_at(&com, w, d, h);
 }
