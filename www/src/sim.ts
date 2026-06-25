@@ -14,7 +14,7 @@ export function initSimulator() {
     simulator.updateHybrid();
 
     let cameraPosition = {
-      eye: { x: 0.0, y: -0.3, z: 0.1 },
+      eye: { x: 0.0, y: -0.6, z: 0.2 },
       target: { x: 0.0, y: 0, z: 0 },
     };
     simulator.graphics.lookAt(cameraPosition);
