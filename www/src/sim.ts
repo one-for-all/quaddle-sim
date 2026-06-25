@@ -28,6 +28,11 @@ export function initSimulator() {
       realtimeRatio.innerHTML =
         "realtime rate: " + simulator.realtimeRatio.toFixed(2);
     }, 500);
+
+    const loadingUI = document.getElementById("loading");
+    if (loadingUI) {
+      loadingUI.remove();
+    }
   });
 }
 

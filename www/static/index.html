@@ -34,6 +34,10 @@
             <!--robot simulation view with serial monitor -->
             <div id="threejs"></div>
             <!--UI componenets that float above everying else-->
+            <div id="loading" class="loading-overlay">
+                <div class="spinner"></div>
+                <p>Loading simulation assets...</p>
+            </div>
             <div class="bottom-container">
                 <div class="build-output" id="buildOutput">
                     <button class="close-output" id="closeOutput">×</button>
@@ -81,6 +85,5 @@
                 ></div>
             </div>
         </div>
-        <script src="bundle.js"></script>
     </body>
 </html>
