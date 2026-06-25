@@ -1,10 +1,15 @@
 import { initSimulator } from "./sim";
 import { getSimulator } from "./sim";
-import { createSerialMonitorPanel } from "chimpanzee-ui";
+import {
+  createSerialMonitorPanel,
+  setupResize,
+  updateUIforMode,
+} from "chimpanzee-ui";
 
 // Import shared CSS
-import "chimpanzee-ui/index.css";
-
-const panel = createSerialMonitorPanel({ getSimulator });
+import "chimpanzee-ui/css";
 
 initSimulator();
+const panel = createSerialMonitorPanel({ getSimulator });
+updateUIforMode();
+setupResize();
