@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+        />
+        <title>Quaddle Robot</title>
+        <style>
+            header {
+                padding-top: env(safe-area-inset-top);
+            }
+            footer {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            body,
+            html {
+                margin: 0;
+                padding: 0;
+                height: 100vh; /* Fallback for older browsers */
+                height: 100dvh; /* The "magic" unit that adjusts to mobile UI */
+                overflow: hidden;
+                width: 100%;
+                display: flex;
+                position: relative;
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="main-wrapper">
+            <!--robot simulation view with serial monitor -->
+            <div id="threejs"></div>
+            <!--UI componenets that float above everying else-->
+            <div class="bottom-container">
+                <div class="build-output" id="buildOutput">
+                    <button class="close-output" id="closeOutput">×</button>
+                    <div id="outputContent"></div>
+                    <div id="serialMonitor"></div>
+                </div>
+                <div class="serial-input-bar" id="serialInputBar">
+                    <input
+                        class="serial-input"
+                        id="serialInput"
+                        type="text"
+                        placeholder="serial monitor input..."
+                        autocomplete="off"
+                        spellcheck="false"
+                    />
+                    <button
+                        class="serial-send"
+                        id="serialSend"
+                        title="Send (Enter)"
+                    >
+                        Send
+                    </button>
+                </div>
+            </div>
+            <div class="overlay">
+                <div class="header-logos">
+                    <div id="petoi-logo-container">
+                        <a href="https://petoi.com/" target="_blank">
+                            <img
+                                src="petoi_logo.avif"
+                                alt="Petoi Logo"
+                                id="petoi-logo-img"
+                            />
+                        </a>
+                    </div>
+                    <div class="collaboration-separator">X</div>
+                    <div id="ape-logo">
+                        <a href="mailto:jn.sapiens@gmail.com">APE</a>
+                    </div>
+                </div>
+                <div id="realtimeRatio">realtime rate: 1.0</div>
+                <div
+                    class="movement-button-container"
+                    id="movementButtonContainer"
+                ></div>
+            </div>
+        </div>
+        <script src="bundle.js"></script>
+    </body>
+</html>
