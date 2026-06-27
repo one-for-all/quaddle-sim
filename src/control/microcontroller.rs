@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use esp32rs::{
     esp32::CPU_FREQUENCY,
     esp32s3::esp32s3::{ESP32S3, S3_CPU_SLOWDOWN_FACTOR},
-    servo::petoi_p1s::PetoiP1S,
+    servo::petoi_p1l::PetoiP1L,
     symbols::Symbols,
 };
 use gorilla_physics::{
@@ -15,7 +15,7 @@ use gorilla_physics::{
 
 pub(crate) struct QuaddleESP32S3Controller {
     esp32s3: ESP32S3,
-    leg_servos: [PetoiP1S; 4],
+    leg_servos: [PetoiP1L; 4],
 
     uart_payload: VecDeque<u8>, // data pending to be fed into esp32 uart0
 }
@@ -77,7 +77,7 @@ impl QuaddleESP32S3Controller {
 
         Self {
             esp32s3,
-            leg_servos: [PetoiP1S::new(); 4],
+            leg_servos: [PetoiP1L::new(); 4],
             uart_payload: VecDeque::new(),
         }
     }
@@ -145,12 +145,26 @@ impl ArticulatedController for QuaddleESP32S3Controller {
             servo.angle = q;
             servo.vel = v;
             let torque = servo.torque() * 0.2;
-            torques[joint_index] += torque;
+            let damping = 0.; // -1e-4 * v;
+            torques[joint_index] += torque + damping;
         }
 
         for joint_index in damped_joint_indices {
             let v = vs[joint_index];
-            let torque = -2e-3 * v;
+
+            // Angle-dependent damping
+            // let offset = if body_dof != 0 { 1 } else { 0 };
+            // let q = qs[joint_index + offset];
+            // let range = (30 as Float).to_radians();
+            // let d_max = -1e-4;
+            // let d_min = -1e-4;
+            // let torque = if (-range..range).contains(&q) {
+            //     (d_max - d_min) * (1. - q.abs() / range) + d_min
+            // } else {
+            //     d_min
+            // } * v;
+
+            let torque = -1e-4 * v;
             torques[joint_index] += torque;
         }
 
@@ -162,6 +176,12 @@ impl ArticulatedController for QuaddleESP32S3Controller {
             let torque = -2e-3 * diff;
             torques[joint_index] += torque;
         }
+
+        // // Damping on all joints
+        // for joint_index in body_dof..dof {
+        //     let v = vs[joint_index];
+        //     torques[joint_index] += -1e-4 * v;
+        // }
 
         DVector::from_vec(torques)
     }
