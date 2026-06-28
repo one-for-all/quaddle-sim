@@ -144,7 +144,7 @@ impl ArticulatedController for QuaddleESP32S3Controller {
             let v = vs[joint_index];
             servo.angle = q;
             servo.vel = v;
-            let torque = servo.torque() * 0.2;
+            let torque = servo.torque() * 0.3;
             let damping = 0.; // -1e-4 * v;
             torques[joint_index] += torque + damping;
         }
@@ -152,11 +152,11 @@ impl ArticulatedController for QuaddleESP32S3Controller {
         for joint_index in damped_joint_indices {
             let v = vs[joint_index];
 
-            // Angle-dependent damping
+            // // Angle-dependent damping
             // let offset = if body_dof != 0 { 1 } else { 0 };
             // let q = qs[joint_index + offset];
-            // let range = (30 as Float).to_radians();
-            // let d_max = -1e-4;
+            // let range = (20 as Float).to_radians();
+            // let d_max = -2e-3;
             // let d_min = -1e-4;
             // let torque = if (-range..range).contains(&q) {
             //     (d_max - d_min) * (1. - q.abs() / range) + d_min
@@ -164,7 +164,7 @@ impl ArticulatedController for QuaddleESP32S3Controller {
             //     d_min
             // } * v;
 
-            let torque = -1e-4 * v;
+            let torque = -2e-3 * v;
             torques[joint_index] += torque;
         }
 

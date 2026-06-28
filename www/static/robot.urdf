@@ -1,13 +1,13 @@
 <?xml version="1.0" ?>
 <!-- Generated using onshape-to-robot -->
 <!-- Onshape https://cad.onshape.com/documents/a3b1d10f7b0700bfe09fde2b/w/fa7387fc2ca2be3b089cbaf5/e/633a19777cc721895e8bbe03 -->
-<robot name="onshape_to_robot_6a409ed450e730.23812679">
+<robot name="onshape_to_robot_6a3be3e51e1bd9.58438008">
   <!-- Link body -->
   <link name="body">
     <inertial>
-      <origin xyz="-0.00527469 -0.00665217 -0.00016366" rpy="0 0 0"/>
-      <mass value="0.161638"/>
-      <inertia ixx="0.000138691" ixy="4.1927e-08" ixz="-9.874e-09" iyy="4.1084e-05" iyz="-3.77189e-06" izz="0.000164163"/>
+      <origin xyz="-0.00527489 -0.0132201 -0.00542857" rpy="0 0 0"/>
+      <mass value="0.10137"/>
+      <inertia ixx="7.10597e-05" ixy="3.6743e-08" ixz="-1.608e-09" iyy="2.69329e-05" iyz="-4.93759e-06" izz="8.4788e-05"/>
     </inertial>
     <!-- Part lego_top_cap -->
     <visual>
@@ -27,16 +27,6 @@
       </geometry>
       <material name="power_cap_material">
         <color rgba="0.419608 0.419608 0.419608 1"/>
-      </material>
-    </visual>
-    <!-- Part batterie_model_bl_5c -->
-    <visual>
-      <origin xyz="0.0237376 -0.0405934 0.0108496" rpy="-1.5708 0 -1.5708"/>
-      <geometry>
-        <mesh filename="package://assets/batterie_model_bl_5c.stl"/>
-      </geometry>
-      <material name="batterie_model_bl_5c_material">
-        <color rgba="0.627451 0.627451 0.627451 1"/>
       </material>
     </visual>
     <!-- Part body_bar -->
