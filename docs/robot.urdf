@@ -1,7 +1,5 @@
 <?xml version="1.0" ?>
-<!-- Generated using onshape-to-robot -->
-<!-- Onshape https://cad.onshape.com/documents/a3b1d10f7b0700bfe09fde2b/w/fa7387fc2ca2be3b089cbaf5/e/633a19777cc721895e8bbe03 -->
-<robot name="onshape_to_robot_6a3be3e51e1bd9.58438008">
+<robot name="quaddle">
   <!-- Link body -->
   <link name="body">
     <inertial>
