@@ -192,8 +192,8 @@ impl ArticulatedController for QuaddleESP32S3Controller {
         symbols.add(new_symbols);
 
         let rom_data: Vec<u8> = self.esp32s3.rom_data.clone();
-        let bootloader_data: Vec<u8> = self.esp32s3.bootloader_flash.clone();
-        let partition_table_data: Vec<u8> = self.esp32s3.partition_table_flash.clone();
+        let bootloader_data: Vec<u8> = self.esp32s3.bootloader_data.clone();
+        let partition_table_data: Vec<u8> = self.esp32s3.partition_table_data.clone();
         let app_data: Vec<u8> = app_bin;
 
         let esp32s3 = ESP32S3::new(
