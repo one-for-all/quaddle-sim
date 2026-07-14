@@ -42,6 +42,7 @@ setupDownload("quaddle_project.zip");
 setupProjectDialog();
 
 setupCompile({
+  fqbn: "esp32:esp32:esp32s3",
   onCompiled: (inoBinBytes, symbolsText) => {
     const hybrid = getSimulator()?.hybrid;
     if (hybrid) {
