@@ -186,6 +186,37 @@ impl ArticulatedController for QuaddleESP32S3Controller {
         DVector::from_vec(torques)
     }
 
+    fn reboot_esp32(&mut self, app_bin: Vec<u8>, new_symbols: &str) {
+        // TODO: add reboot function to ESP32S3
+        let mut symbols = self.esp32s3.symbols.clone();
+        symbols.add(new_symbols);
+
+        let rom_data: Vec<u8> = self.esp32s3.rom_data.clone();
+        let bootloader_data: Vec<u8> = self.esp32s3.bootloader_flash.clone();
+        let partition_table_data: Vec<u8> = self.esp32s3.partition_table_flash.clone();
+        let app_data: Vec<u8> = app_bin;
+
+        let esp32s3 = ESP32S3::new(
+            rom_data,
+            bootloader_data,
+            partition_table_data,
+            app_data,
+            symbols,
+        );
+
+        self.esp32s3 = esp32s3;
+        for servo in self.leg_servos.iter_mut() {
+            servo.reset();
+        }
+    }
+
+    fn reboot(&mut self, _code: &str) {
+        self.esp32s3.reboot();
+        for servo in self.leg_servos.iter_mut() {
+            servo.reset();
+        }
+    }
+
     /// Return the content in UART
     fn get_uart(&self) -> String {
         self.esp32s3.get_uart()
