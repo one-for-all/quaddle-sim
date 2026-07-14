@@ -46,6 +46,13 @@ setupCompile({
     const hybrid = getSimulator()?.hybrid;
     if (hybrid) {
       hybrid.reset();
+
+      // Initial pose
+      let zero_positions = [210, 60, 240, 30];
+      for (let i = 0; i < zero_positions.length; i++) {
+        hybrid.set_joint_q(1 + 1 + 6 * i, zero_positions[i] * (Math.PI / 180)); // skip first floating joint and other non-actuated joints
+      }
+
       // No-op until QuaddleESP32S3Controller implements reboot_esp32
       hybrid.reboot_esp32_controller(0, inoBinBytes, symbolsText);
     }
@@ -56,6 +63,12 @@ setupCompile({
 // already restores it; the controller reboot is a no-op until
 // QuaddleESP32S3Controller implements reboot
 setupResetButton({ getSimulator }, (hybrid) => {
+  // Initial pose
+  let zero_positions = [210, 60, 240, 30];
+  for (let i = 0; i < zero_positions.length; i++) {
+    hybrid.set_joint_q(1 + 1 + 6 * i, zero_positions[i] * (Math.PI / 180)); // skip first floating joint and other non-actuated joints
+  }
+
   hybrid.reboot_code_controller?.(0, "");
 });
 setupModeToggleButton();
