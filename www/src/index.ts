@@ -8,12 +8,25 @@ import {
   setupResize,
   updateUIforMode,
   createMotionButton,
+  setupWasdControls,
 } from "chimpanzee-ui";
 
 initSimulator();
 const panel = createSerialMonitorPanel({ getSimulator });
 updateUIforMode();
 setupResize();
+
+setupWasdControls(
+  { getSimulator },
+  {
+    forward: "ktrF",
+    left: "kvtL",
+    backward: "kbkF",
+    right: "kvtR",
+    stand: "kup",
+    recover: "krc",
+  },
+);
 
 // Skill names mirror Instinct_Quaddle.h; each payload is "k" + skill name.
 const motions = [
