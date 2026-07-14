@@ -31,37 +31,131 @@
     </head>
     <body>
         <div class="main-wrapper">
+            <!-- Project sidebar (very left) -->
+            <div class="project-sidebar" id="projectSidebar">
+                <button
+                    class="project-sidebar-button"
+                    id="projectDialogButton"
+                    title="Project Dialog"
+                >
+                    +
+                </button>
+                <button
+                    class="project-sidebar-button"
+                    id="toggleExplorerButton"
+                    title="Toggle Explorer"
+                >
+                    ☰
+                </button>
+                <button
+                    class="project-sidebar-button"
+                    id="downloadButton"
+                    title="Download Project"
+                >
+                    ⬇︎
+                </button>
+            </div>
+            <!-- Project dialog -->
+            <div class="project-dialog hidden" id="projectDialog">
+                <button class="new-file-btn" id="newFileBtn">New File</button>
+            </div>
+            <!-- File explorer -->
+            <div class="explorer" id="explorer">
+                <div class="explorer-header">Files</div>
+                <div class="explorer-files" id="explorerFiles"></div>
+            </div>
+            <div class="editor-container" id="editorContainer">
+                <div class="file-bar" id="fileBar">
+                    <div class="file-tab-scroll" id="fileTabScroll">
+                        <!-- file tabs go here -->
+                    </div>
+                    <div class="file-bar-actions" id="fileBarActions">
+                        <button class="run-button" id="runButton">
+                            <span>🔨</span>
+                            <span>Compile</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="editor"></div>
+            </div>
+            <!--resize the width of editor container -->
+            <div class="main-resize-handle" id="mainResizeHandle"></div>
             <!--robot simulation view with serial monitor -->
-            <div id="threejs"></div>
+            <div id="threejs">
+                <div id="compile-spinner">
+                    <div class="spinner-small"></div>
+                    <div class="spinner-text">Compiling...</div>
+                </div>
+                <div id="loading" class="loading-overlay">
+                    <div class="spinner"></div>
+                    <p>Loading simulation assets...</p>
+                </div>
+                <button class="reset-button" id="resetButton">
+                    <span>🔄</span>
+                    <span>Reset</span>
+                </button>
+                <button
+                    class="reset-button"
+                    id="toggleModeButton"
+                    style="top: 40px"
+                >
+                    <span>⚙️</span>
+                    <span>Mode</span>
+                </button>
+                <div class="bottom-container">
+                    <div class="controls-row">
+                        <div class="wasd-container" id="wasdContainer">
+                            <button class="wasd-button" id="btnW">W</button>
+                            <div class="wasd-row">
+                                <button class="wasd-button" id="btnA">A</button>
+                                <button class="wasd-button" id="btnS">S</button>
+                                <button class="wasd-button" id="btnD">D</button>
+                            </div>
+                        </div>
+                        <div
+                            class="wasd-container action-key-container"
+                            id="actionKeyContainer"
+                        >
+                            <button
+                                class="wasd-button wasd-action"
+                                id="btnRecover"
+                            >
+                                RECOVER
+                            </button>
+                            <button
+                                class="wasd-button wasd-action"
+                                id="btnStand"
+                            >
+                                STAND
+                            </button>
+                        </div>
+                    </div>
+                    <div class="build-output" id="buildOutput">
+                        <button class="close-output" id="closeOutput">×</button>
+                        <div id="outputContent"></div>
+                        <div id="serialMonitor"></div>
+                    </div>
+                    <div class="serial-input-bar" id="serialInputBar">
+                        <input
+                            class="serial-input"
+                            id="serialInput"
+                            type="text"
+                            placeholder="serial monitor input..."
+                            autocomplete="off"
+                            spellcheck="false"
+                        />
+                        <button
+                            class="serial-send"
+                            id="serialSend"
+                            title="Send (Enter)"
+                        >
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!--UI componenets that float above everying else-->
-            <div id="loading" class="loading-overlay">
-                <div class="spinner"></div>
-                <p>Loading simulation assets...</p>
-            </div>
-            <div class="bottom-container">
-                <div class="build-output" id="buildOutput">
-                    <button class="close-output" id="closeOutput">×</button>
-                    <div id="outputContent"></div>
-                    <div id="serialMonitor"></div>
-                </div>
-                <div class="serial-input-bar" id="serialInputBar">
-                    <input
-                        class="serial-input"
-                        id="serialInput"
-                        type="text"
-                        placeholder="serial monitor input..."
-                        autocomplete="off"
-                        spellcheck="false"
-                    />
-                    <button
-                        class="serial-send"
-                        id="serialSend"
-                        title="Send (Enter)"
-                    >
-                        Send
-                    </button>
-                </div>
-            </div>
             <div class="overlay">
                 <div class="header-logos">
                     <div id="petoi-logo-container">
