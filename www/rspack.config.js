@@ -38,7 +38,7 @@ const rspackConfig = {
         use: [rspack.CssExtractRspackPlugin.loader, "css-loader"],
       },
       {
-        test: /\.(ino|h|cpp|md|hex|txt)$/,
+        test: /\.(ino|h|c|cpp|hpp|md|hex|txt)$/,
         type: "asset/source",
       },
       {

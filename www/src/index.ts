@@ -3,18 +3,62 @@ import "chimpanzee-ui/css";
 
 import { initSimulator } from "./sim";
 import { getSimulator } from "./sim";
+import { initProjectFiles } from "./files";
 import {
   createSerialMonitorPanel,
   setupResize,
   updateUIforMode,
   createMotionButton,
   setupWasdControls,
+  setupEditor,
+  editorIsFocused,
+  openFile,
+  inoFileName,
+  setupExplorerToggle,
+  setupDownload,
+  setupCompile,
+  setupResetButton,
+  setupModeToggleButton,
+  setupProjectDialog,
+  isPhoneUA,
 } from "chimpanzee-ui";
+
+if (isPhoneUA()) {
+  document.getElementById("explorer")?.classList.add("hidden");
+  document.getElementById("editorContainer")!.style.flex = `0 0 10px`;
+}
+
+updateUIforMode();
+setupResize();
 
 initSimulator();
 const panel = createSerialMonitorPanel({ getSimulator });
-updateUIforMode();
-setupResize();
+
+initProjectFiles();
+setupEditor();
+openFile(inoFileName());
+setupExplorerToggle();
+setupDownload("quaddle_project.zip");
+setupProjectDialog();
+
+setupCompile({
+  onCompiled: (inoBinBytes, symbolsText) => {
+    const hybrid = getSimulator()?.hybrid;
+    if (hybrid) {
+      hybrid.reset();
+      // No-op until QuaddleESP32S3Controller implements reboot_esp32
+      hybrid.reboot_esp32_controller(0, inoBinBytes, symbolsText);
+    }
+  },
+});
+
+// Initial pose is baked into the joints at construction, so reset()
+// already restores it; the controller reboot is a no-op until
+// QuaddleESP32S3Controller implements reboot
+setupResetButton({ getSimulator }, (hybrid) => {
+  hybrid.reboot_code_controller?.(0, "");
+});
+setupModeToggleButton();
 
 setupWasdControls(
   { getSimulator },
@@ -26,6 +70,7 @@ setupWasdControls(
     stand: "kup",
     recover: "krc",
   },
+  { isTypingElsewhere: editorIsFocused },
 );
 
 // Skill names mirror Instinct_Quaddle.h; each payload is "k" + skill name.
