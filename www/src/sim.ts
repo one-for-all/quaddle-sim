@@ -3,6 +3,11 @@ import { Simulator } from "gorilla-physics-ui";
 
 let _simulator: Simulator | null = null;
 
+export const cameraPosition = {
+  eye: { x: 0.0, y: -0.6, z: 0.2 },
+  target: { x: 0.0, y: 0, z: 0 },
+};
+
 export function initSimulator() {
   let interfaceSimulator = null;
   let showGrid = true;
@@ -13,10 +18,6 @@ export function initSimulator() {
     simulator.addHybrid(state);
     simulator.updateHybrid();
 
-    let cameraPosition = {
-      eye: { x: 0.0, y: -0.6, z: 0.2 },
-      target: { x: 0.0, y: 0, z: 0 },
-    };
     simulator.graphics.lookAt(cameraPosition);
 
     simulator.run(60, 0);

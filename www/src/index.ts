@@ -2,7 +2,7 @@
 import "chimpanzee-ui/css";
 
 import { initSimulator } from "./sim";
-import { getSimulator } from "./sim";
+import { getSimulator, cameraPosition } from "./sim";
 import { initProjectFiles } from "./files";
 import {
   createSerialMonitorPanel,
@@ -63,15 +63,19 @@ setupCompile({
 // Initial pose is baked into the joints at construction, so reset()
 // already restores it; the controller reboot is a no-op until
 // QuaddleESP32S3Controller implements reboot
-setupResetButton({ getSimulator }, (hybrid) => {
-  // Initial pose
-  let zero_positions = [210, 60, 240, 30];
-  for (let i = 0; i < zero_positions.length; i++) {
-    hybrid.set_joint_q(1 + 1 + 6 * i, zero_positions[i] * (Math.PI / 180)); // skip first floating joint and other non-actuated joints
-  }
+setupResetButton(
+  { getSimulator },
+  (hybrid) => {
+    // Initial pose
+    let zero_positions = [210, 60, 240, 30];
+    for (let i = 0; i < zero_positions.length; i++) {
+      hybrid.set_joint_q(1 + 1 + 6 * i, zero_positions[i] * (Math.PI / 180)); // skip first floating joint and other non-actuated joints
+    }
 
-  hybrid.reboot_code_controller?.(0, "");
-});
+    hybrid.reboot_code_controller?.(0, "");
+  },
+  cameraPosition,
+);
 setupModeToggleButton();
 
 setupWasdControls(
