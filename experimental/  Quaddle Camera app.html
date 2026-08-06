@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camera · Elbow &amp; Knee Tracking</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #0f1419;
+      color: #e6edf3;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.55rem 0.85rem;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+    .top-bar h1 {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .top-bar .bar-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    #btnResetCalib {
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.4rem 0.75rem;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #21262d;
+      color: #e6edf3;
+      white-space: nowrap;
+    }
+    #btnResetCalib:hover { background: #30363d; }
+    #robotIpInput {
+      font: inherit;
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+      padding: 0.4rem 0.65rem;
+      width: 9.5rem;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      background: #0d1117;
+      color: #e6edf3;
+    }
+    #robotIpInput:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+    #quickConnectBtn {
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #238636;
+      color: #fff;
+      white-space: nowrap;
+    }
+    #quickConnectBtn:hover { background: #2ea043; }
+    #quickConnectBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+    #quickConnectBtn[data-connected="true"] {
+      background: #4CAF50 !important;
+      color: #fff;
+      font-weight: bold;
+    }
+    #quickConnectBtn[data-connected="true"]:hover {
+      background: #45a049 !important;
+    }
+    #langSelect {
+      font: inherit;
+      font-size: 0.85rem;
+      padding: 0.35rem 0.5rem;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      background: #21262d;
+      color: #e6edf3;
+      cursor: pointer;
+      max-width: 9.5rem;
+    }
+    #langSelect:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+
+    .main {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .camera-pane {
+      position: relative;
+      flex: 7;
+      min-width: 0;
+      background: #000;
+      overflow: hidden;
+    }
+
+    .setup {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      z-index: 5;
+      background: #0f1419;
+    }
+    body.camera-on .setup { display: none; }
+
+    .panel {
+      background: #1c2128;
+      border-radius: 12px;
+      padding: 1.25rem;
+      max-width: 560px;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+    .panel h2 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 0 0 0.75rem;
+    }
+    .panel p {
+      margin: 0 0 0.75rem;
+      font-size: 0.92rem;
+      color: #8b949e;
+      line-height: 1.5;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+      justify-content: center;
+    }
+    .btn-start {
+      font: inherit;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      background: #238636;
+      color: #fff;
+    }
+    .btn-start:hover { background: #2ea043; }
+    .btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
+    .hint {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: #8b949e;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .error {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      background: rgba(218, 54, 51, 0.15);
+      color: #ff7b72;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .error.visible { display: block; }
+    #loadStatus {
+      margin-top: 0.75rem;
+      font-size: 0.9rem;
+      color: #8b949e;
+      text-align: center;
+    }
+    .legend {
+      margin: 0.5rem 0 0;
+      font-size: 0.78rem;
+      color: #8b949e;
+      text-align: center;
+    }
+    .legend i {
+      display: inline-block;
+      width: 0.65rem;
+      height: 0.65rem;
+      border-radius: 50%;
+      margin-right: 0.25rem;
+      vertical-align: -0.05rem;
+    }
+    .dot-elbow { background: #FF3D9A; }
+    .dot-knee { background: #FF3D9A; }
+    .dot-pose { background: #00F0FF; }
+    .dot-base { background: #FFE600; }
+
+    #preview {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+      z-index: 1;
+      display: none;
+      transform: scaleX(-1);
+    }
+    body.camera-on #preview { display: block; }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+      display: none;
+    }
+    body.camera-on #overlay { display: block; }
+
+    .hud {
+      position: absolute;
+      z-index: 10;
+      display: none;
+      font-size: 0.75rem;
+      line-height: 1.35;
+      color: #e6edf3;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+    }
+    body.camera-on .hud { display: block; }
+    .hud-stats {
+      bottom: 0.75rem;
+      left: 0.75rem;
+      pointer-events: none;
+      padding: 0.55rem 0.75rem;
+      border-radius: 10px;
+      background: rgba(22, 27, 34, 0.82);
+      border: 1px solid rgba(48, 54, 61, 0.85);
+      font-size: 0.82rem;
+      font-weight: 500;
+      max-width: min(22rem, calc(100% - 1.5rem));
+    }
+    .hud-stats span {
+      color: #58a6ff;
+      font-variant-numeric: tabular-nums;
+    }
+    .hud-reset-btn {
+      margin-top: 0.4rem;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.3rem 0.65rem;
+      border: 1px solid #f0883e;
+      border-radius: 6px;
+      cursor: pointer;
+      background: rgba(240, 136, 62, 0.2);
+      color: #f0883e;
+      pointer-events: auto;
+    }
+    .hud-reset-btn:hover {
+      background: rgba(240, 136, 62, 0.35);
+    }
+    .hud-coords {
+      top: 0.65rem;
+      left: 0.65rem;
+      max-width: min(16rem, calc(100% - 1.3rem));
+      max-height: calc(100% - 5rem);
+      overflow: auto;
+      padding: 0.55rem 0.65rem;
+      border-radius: 10px;
+      background: rgba(22, 27, 34, 0.88);
+      border: 1px solid rgba(48, 54, 61, 0.95);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+      pointer-events: auto;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.7rem;
+      line-height: 1.45;
+    }
+    .hud-coords h2 {
+      margin: 0 0 0.35rem;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #8b949e;
+    }
+
+    /* Right panel — styled after PetoiWebCoding */
+    .windows-container {
+      display: flex;
+      flex-direction: column;
+      flex: 3;
+      min-width: 280px;
+      max-width: 420px;
+      height: 100%;
+      overflow: hidden;
+      background: #f5f5f5;
+      padding: 8px;
+      gap: 6px;
+      border-left: 1px solid #30363d;
+      color: #222;
+    }
+    #consoleWindow {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      width: 100%;
+      overflow: hidden;
+      flex: 1;
+      background: #1e1e1e;
+      min-height: 120px;
+    }
+    .area-header {
+      margin: 0;
+      display: grid;
+      grid-template-columns: minmax(72px, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      background: #2d2d2d;
+      padding: 8px 10px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      min-height: 36px;
+    }
+    .area-header .title-section {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .area-title {
+      font-weight: 600;
+      color: #fff;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      line-height: 1.5;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: Arial, sans-serif;
+    }
+    .serial-port-info {
+      font-size: 11px;
+      color: #c9d1d9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .area-header .button-group {
+      grid-column: 2;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: 4px;
+    }
+    .area-header .button-group button {
+      margin: 0;
+      font: inherit;
+      font-size: 12px;
+      font-family: Arial, sans-serif;
+      padding: 0 8px;
+      height: 28px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      background: #fff;
+      color: #222;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .area-header .button-group button:hover { background: #e9e9e9; }
+    .area-header .button-group button.serial-button {
+      background: #007bff;
+      color: #fff;
+    }
+    .area-header .button-group button.serial-button:hover { background: #0056b3; }
+    .area-header .button-group button.toggle-button.active {
+      background: #4CAF50;
+      color: #fff;
+    }
+
+    #consoleLog,
+    .serial-output {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 10px;
+      background: #1e1e1e;
+      color: #fff;
+      font-family: Consolas, ui-monospace, monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      white-space: nowrap;
+      user-select: text;
+    }
+    .console-item {
+      padding: 3px 0;
+      margin-bottom: 3px;
+      font-size: 13px;
+      white-space: nowrap;
+      line-height: 1.3;
+      color: #fff;
+    }
+    .console-item .timestamp { color: #888; }
+    .console-item.warn { color: #f0c674; }
+    .console-item.error { color: #ff7b72; }
+    .console-item.good { color: #3fb950; }
+    .console-item.sent { color: #79c0ff; }
+
+    .horizontal-resizer {
+      width: 100%;
+      height: 4px;
+      background: #e0e0e0;
+      cursor: row-resize;
+      user-select: none;
+      display: none;
+      flex-shrink: 0;
+    }
+    body.serial-connected .horizontal-resizer { display: block; }
+    .horizontal-resizer:hover,
+    .horizontal-resizer.active { background: #007bff; }
+
+    #serialContainer {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      overflow: hidden;
+      background: #f5f5f5;
+      flex: 0 0 auto;
+    }
+    #serialContainer.connected {
+      flex: 4;
+      min-height: 160px;
+    }
+    #serialInterface {
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      height: 100%;
+      background: #1e1e1e;
+    }
+    #serialContainer.connected #serialInterface {
+      display: flex;
+    }
+    .serial-input-container {
+      display: flex;
+      gap: 5px;
+      padding: 8px 10px;
+      background: #1e1e1e;
+      border-top: 1px solid #333;
+      flex-shrink: 0;
+    }
+    .serial-input-container input {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: #0d1117;
+      color: #e6edf3;
+      font: inherit;
+      font-size: 13px;
+    }
+    .serial-input-container button {
+      font: inherit;
+      font-size: 13px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+    }
+    .serial-input-container button:hover { background: #0056b3; }
+
+    /* WiFi dialog */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 1000;
+      display: none;
+    }
+    .modal-overlay.visible { display: block; }
+    .wifi-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      color: #222;
+      padding: 1.25rem 1.4rem;
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      z-index: 1001;
+      width: min(360px, calc(100vw - 2rem));
+      display: none;
+    }
+    .wifi-dialog.visible { display: block; }
+    .wifi-dialog h3 {
+      margin: 0 0 0.75rem;
+      font-size: 1rem;
+    }
+    .wifi-dialog label {
+      display: block;
+      font-size: 0.85rem;
+      margin: 0.5rem 0 0.25rem;
+    }
+    .wifi-dialog input {
+      width: 100%;
+      padding: 0.45rem 0.55rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font: inherit;
+    }
+    .wifi-dialog .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .wifi-dialog .dialog-actions button {
+      font: inherit;
+      font-size: 0.85rem;
+      padding: 0.4rem 0.85rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .wifi-dialog .btn-cancel { background: #e9e9e9; color: #222; }
+    .wifi-dialog .btn-ok { background: #007bff; color: #fff; }
+
+    @media (max-width: 800px) {
+      .main { flex-direction: column; }
+      .windows-container {
+        flex: none;
+        max-width: none;
+        min-width: 0;
+        width: 100%;
+        height: 42%;
+        border-left: none;
+        border-top: 1px solid #30363d;
+      }
+      .camera-pane { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-bar">
+      <h1 data-i18n="appTitle">Camera · Elbow &amp; Knee Tracking</h1>
+      <div class="bar-actions">
+        <button type="button" id="btnResetCalib" data-i18n="reset" data-i18n-title="resetTitle">Reset</button>
+        <input
+          type="text"
+          id="robotIpInput"
+          data-i18n-placeholder="robotIpPlaceholder"
+          data-i18n-title="robotIpTitle"
+          placeholder="Robot IP"
+          spellcheck="false"
+          autocomplete="off"
+          title="Robot IP — auto-updated; editable"
+        />
+        <button type="button" id="quickConnectBtn" data-i18n="quickConnect">Quick Connect</button>
+        <select id="langSelect" aria-label="Language">
+          <option value="en">🇺🇸 English</option>
+          <option value="zh">🇨🇳 中文</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="main">
+      <section class="camera-pane" id="cameraPane">
+        <div class="setup">
+          <div class="panel">
+            <h2 data-i18n="appTitle">Camera · Elbow &amp; Knee Tracking</h2>
+            <p data-i18n="setupDesc">
+              After camera access, track left/right elbows and knees on the left. Connect a Petoi robot on the right (Web Serial, 115200).
+            </p>
+            <div class="controls">
+              <button type="button" class="btn-start" id="btnStart" data-i18n="openCamera" disabled>Open Camera</button>
+            </div>
+            <p id="loadStatus">Loading MediaPipe model…</p>
+            <p id="err" class="error" role="alert"></p>
+            <p class="hint" data-i18n-html="setupHint">
+              Requires HTTPS or <code>localhost</code>. Use a Chromium browser for serial.
+              Example: <code>python3 -m http.server 8765</code>
+            </p>
+            <p class="legend">
+              <i class="dot-pose"></i><span data-i18n="legendSkeleton">Skeleton</span>
+              &nbsp;&nbsp;<i class="dot-base"></i><span data-i18n="legendBaseline">Baseline</span>
+              &nbsp;&nbsp;<i class="dot-elbow"></i><span data-i18n="legendDrop">Drops / joints</span>
+            </p>
+          </div>
+        </div>
+
+        <video id="preview" autoplay playsinline muted></video>
+        <canvas id="overlay" aria-hidden="true"></canvas>
+
+        <aside class="hud hud-coords" id="hudCoords" data-i18n-aria="hudCoordsAria">
+          <h2 data-i18n="hudCoordsTitle">Y offset / shoulder width %</h2>
+          <div id="coordText">Waiting for detection…</div>
+        </aside>
+        <div class="hud hud-stats" id="hudStats">
+          <span data-i18n="statFps">FPS:</span> <span id="statFps">—</span><br />
+          <span data-i18n="statPose">Pose:</span> <span id="statPose">0</span>
+          · <span data-i18n="statElbows">Elbows:</span> <span id="statElbows">0</span>
+          · <span data-i18n="statKnees">Knees:</span> <span id="statKnees">0</span><br />
+          <span data-i18n="statMap">Map:</span> <span id="statCalib">Tracking</span>
+          · <span data-i18n="statControl">Control:</span> <span id="statControl">Idle</span><br />
+          <button type="button" id="btnResetCalibHud" class="hud-reset-btn" data-i18n="resetHud">Reset min/max</button>
+        </div>
+      </section>
+
+      <aside class="windows-container" data-i18n-aria="robotConsoleAria">
+        <div id="consoleWindow">
+          <div class="area-header">
+            <span class="area-title" data-i18n="console">Console</span>
+            <div class="button-group">
+              <button type="button" class="toggle-button active" id="btnConsoleTime" data-i18n="btnTime">🕐 Time</button>
+              <button type="button" class="clear-button" id="btnClearConsole" data-i18n="btnClear">🗑️ Clear</button>
+            </div>
+          </div>
+          <div id="consoleLog" class="dark-scrollbar" tabindex="0"></div>
+        </div>
+
+        <div class="horizontal-resizer" id="consoleSerialDivider"></div>
+
+        <div id="serialContainer">
+          <div class="area-header">
+            <div class="title-section">
+              <span class="area-title" id="serialOutputTitle" data-i18n="serialMonitor">Serial Monitor</span>
+              <div class="serial-port-info" id="serialPortInfo" style="display: none;"></div>
+            </div>
+            <div class="button-group">
+              <button type="button" class="serial-button" id="openSerialBtn" data-i18n="btnConnect">🔌 Connect</button>
+              <button type="button" class="toggle-button active" id="btnSerialTime" style="display: none;" data-i18n="btnTime">🕐 Time</button>
+              <button type="button" class="clear-button" id="closeSerialBtn" style="display: none;" data-i18n="btnClose">❌ Close</button>
+              <button type="button" class="clear-button" id="clearSerialBtn" style="display: none;" data-i18n="btnClear">🗑️ Clear</button>
+            </div>
+          </div>
+          <div id="serialInterface">
+            <div class="serial-output dark-scrollbar" id="serialOutput" tabindex="0"></div>
+            <div class="serial-input-container">
+              <input type="text" id="serialInput" data-i18n-placeholder="serialPlaceholder" placeholder="Enter content to send" autocomplete="off" />
+              <button type="button" id="btnSendSerial" data-i18n="btnSend">Send</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="wifiOverlay"></div>
+  <div class="wifi-dialog" id="wifiDialog" role="dialog" aria-labelledby="wifiDialogTitle">
+    <h3 id="wifiDialogTitle" data-i18n="wifiTitle">WiFi Connect</h3>
+    <p style="margin:0 0 0.5rem;font-size:0.85rem;color:#555;" data-i18n="wifiDesc">
+      Without serial, enter the robot IP for WebSocket. With serial, query IP or send SSID/password.
+    </p>
+    <label for="wifiDialogIp" data-i18n="labelIp">IP Address</label>
+    <input id="wifiDialogIp" type="text" placeholder="192.168.x.x" autocomplete="off" spellcheck="false" />
+    <label for="wifiSsid" data-i18n="labelSsid">SSID (optional, needs serial)</label>
+    <input id="wifiSsid" type="text" autocomplete="off" />
+    <label for="wifiPassword" data-i18n="labelPassword">Password (optional, needs serial)</label>
+    <input id="wifiPassword" type="password" autocomplete="off" />
+    <div class="dialog-actions">
+      <button type="button" class="btn-cancel" id="wifiCancel" data-i18n="btnCancel">Cancel</button>
+      <button type="button" class="btn-ok" id="wifiConnectIp" data-i18n="btnConnectWifi">Connect WiFi</button>
+      <button type="button" class="btn-ok" id="wifiQuery" data-i18n="btnQueryIp">Query IP (w)</button>
+      <button type="button" class="btn-ok" id="wifiConfirm" data-i18n="btnSendConfig">Send Config</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      FilesetResolver,
+      PoseLandmarker,
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/+esm";
+
+    const LANG_STORAGE_KEY = "camWalkingGame.lang";
+    const I18N = {
+      en: {
+        appTitle: "Camera · Elbow & Knee Tracking",
+        reset: "Reset",
+        resetTitle: "Clear per-joint percentage min/max",
+        resetHud: "Reset min/max",
+        robotIpPlaceholder: "Robot IP",
+        robotIpTitle: "Robot IP — auto-updated; editable",
+        quickConnect: "Quick Connect",
+        setupDesc:
+          "After camera access, track left/right elbows and knees on the left. Connect a Petoi robot on the right (Web Serial, 115200).",
+        openCamera: "Open Camera",
+        loadingModel: "Loading MediaPipe model…",
+        loadingPose: "Loading pose model…",
+        loadingCpu: "GPU unavailable, loading on CPU…",
+        modelReady: "Model ready. You can open the camera.",
+        modelFailed: "Model failed to load.",
+        setupHint:
+          'Requires HTTPS or <code>localhost</code>. Use a Chromium browser for serial. Example: <code>python3 -m http.server 8765</code>',
+        legendSkeleton: "Skeleton",
+        legendBaseline: "Baseline",
+        legendDrop: "Drops / joints",
+        hudCoordsAria: "Joint offsets",
+        hudCoordsTitle: "Y offset / shoulder width %",
+        waitingDetect: "Waiting for detection…",
+        noBody: "No person detected\nKeep your full body in frame",
+        statFps: "FPS:",
+        statPose: "Pose:",
+        statElbows: "Elbows:",
+        statKnees: "Knees:",
+        statMap: "Map:",
+        statControl: "Control:",
+        tracking: "Tracking",
+        idle: "Idle",
+        mapReady: "Ready b±{range}",
+        mapTracking: "Tracking {n}/4",
+        expandMotion: "Move more to build min/max",
+        notConnected: "Not connected",
+        sendFailed: "Send failed",
+        robotConsoleAria: "Robot console",
+        console: "Console",
+        serialMonitor: "Serial Monitor",
+        btnTime: "🕐 Time",
+        btnClear: "🗑️ Clear",
+        btnConnect: "🔌 Connect",
+        btnClose: "❌ Close",
+        btnSend: "Send",
+        serialPlaceholder: "Enter content to send",
+        wifiTitle: "WiFi Connect",
+        wifiDesc:
+          "Without serial, enter the robot IP for WebSocket. With serial, query IP or send SSID/password.",
+        labelIp: "IP Address",
+        labelSsid: "SSID (optional, needs serial)",
+        labelPassword: "Password (optional, needs serial)",
+        btnCancel: "Cancel",
+        btnConnectWifi: "Connect WiFi",
+        btnQueryIp: "Query IP (w)",
+        btnSendConfig: "Send Config",
+        resetDone: "Reset done\nDynamic pct min/max → b±{range}°",
+        cameraError: "Cannot open camera: {msg}",
+        mediapipeError:
+          "Failed to load MediaPipe: {msg}. Check network or use a local server.",
+      },
+      zh: {
+        appTitle: "摄像头 · 手肘与膝盖追踪",
+        reset: "Reset",
+        resetTitle: "清空各关节百分数 min/max",
+        resetHud: "Reset 清空 min/max",
+        robotIpPlaceholder: "机器人 IP",
+        robotIpTitle: "机器人 IP，自动更新；也可手动输入",
+        quickConnect: "Quick Connect",
+        setupDesc:
+          "允许摄像头后左侧实时追踪左右手肘与膝盖。右侧可连接 Petoi 机器人（Web Serial，115200）。",
+        openCamera: "打开摄像头",
+        loadingModel: "正在加载 MediaPipe 模型…",
+        loadingPose: "正在加载姿态模型…",
+        loadingCpu: "GPU 不可用，改用 CPU 加载模型…",
+        modelReady: "模型已就绪，可以打开摄像头。",
+        modelFailed: "模型加载失败。",
+        setupHint:
+          "需 HTTPS 或 <code>localhost</code>。串口连接请使用 Chromium 系浏览器。本地服务示例：<code>python3 -m http.server 8765</code>",
+        legendSkeleton: "骨架",
+        legendBaseline: "水平基准",
+        legendDrop: "垂线/关节",
+        hudCoordsAria: "关节偏移",
+        hudCoordsTitle: "Y 偏移 / 肩宽 %",
+        waitingDetect: "等待检测…",
+        noBody: "未检测到人体\n请保证全身入镜",
+        statFps: "FPS：",
+        statPose: "姿态：",
+        statElbows: "肘：",
+        statKnees: "膝：",
+        statMap: "映射：",
+        statControl: "控制：",
+        tracking: "追踪中",
+        idle: "待机",
+        mapReady: "就绪 b±{range}",
+        mapTracking: "追踪 {n}/4",
+        expandMotion: "扩大动作以建立 min/max",
+        notConnected: "未连接",
+        sendFailed: "发送失败",
+        robotConsoleAria: "机器人控制台",
+        console: "控制台",
+        serialMonitor: "串口监视器",
+        btnTime: "🕐 时间",
+        btnClear: "🗑️ 清空",
+        btnConnect: "🔌 连接",
+        btnClose: "❌ 关闭",
+        btnSend: "发送",
+        serialPlaceholder: "输入要发送的内容",
+        wifiTitle: "WiFi 连接",
+        wifiDesc:
+          "无串口时输入机器人 IP 直接 WebSocket 连接。有串口时可查询 IP，或下发 SSID/密码。",
+        labelIp: "IP 地址",
+        labelSsid: "SSID（可选，需串口）",
+        labelPassword: "密码（可选，需串口）",
+        btnCancel: "取消",
+        btnConnectWifi: "连接 WiFi",
+        btnQueryIp: "查询 IP (w)",
+        btnSendConfig: "发送配置",
+        resetDone: "已 Reset\n动态追踪百分数 min/max → b±{range}°",
+        cameraError: "无法打开摄像头：{msg}",
+        mediapipeError:
+          "加载 MediaPipe 失败：{msg}。请检查网络，或改用本地服务器访问本页。",
+      },
+    };
+
+    let currentLang = "en";
+    try {
+      const savedLang = localStorage.getItem(LANG_STORAGE_KEY);
+      if (savedLang === "en" || savedLang === "zh") currentLang = savedLang;
+    } catch {
+      /* ignore */
+    }
+
+    function t(key, vars) {
+      const table = I18N[currentLang] || I18N.en;
+      let s = table[key] ?? I18N.en[key] ?? key;
+      if (vars) {
+        for (const [k, v] of Object.entries(vars)) {
+          s = s.replace(new RegExp("\\{" + k + "\\}", "g"), String(v));
+        }
+      }
+      return s;
+    }
+
+    function applyI18n() {
+      document.documentElement.lang = currentLang === "zh" ? "zh-CN" : "en";
+      document.title = t("appTitle");
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        if (key) el.textContent = t(key);
+      });
+      document.querySelectorAll("[data-i18n-html]").forEach((el) => {
+        const key = el.getAttribute("data-i18n-html");
+        if (key) el.innerHTML = t(key);
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+        const key = el.getAttribute("data-i18n-placeholder");
+        if (key) el.setAttribute("placeholder", t(key));
+      });
+      document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+        const key = el.getAttribute("data-i18n-title");
+        if (key) el.setAttribute("title", t(key));
+      });
+      document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+        const key = el.getAttribute("data-i18n-aria");
+        if (key) el.setAttribute("aria-label", t(key));
+      });
+      const langSelect = document.getElementById("langSelect");
+      if (langSelect) langSelect.value = currentLang;
+      // Keep dynamic fields in sync when language changes
+      if (typeof loadStatusEl !== "undefined" && loadStatusEl && loadStatusEl.dataset.i18nKey) {
+        loadStatusEl.textContent = t(loadStatusEl.dataset.i18nKey);
+      }
+      if (typeof coordTextEl !== "undefined" && coordTextEl && !document.body.classList.contains("camera-on")) {
+        coordTextEl.textContent = t("waitingDetect");
+      }
+    }
+
+    const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm";
+    const POSE_MODEL =
+      "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+    const BAUD = 115200;
+    /** Robot joints 2..5 map to LE, RE, RK, LK (a[0..3]). */
+    const B_BASE = [0, 0, 25, 25];
+    const ROBOT_JOINT_IDS = [2, 3, 4, 5];
+    /** Usable angle range around baseline: [b - RANGE, b + RANGE]. */
+    const ANGLE_RANGE = 25;
+    /** Minimum pct span before mapping is considered valid. */
+    const MIN_PCT_SPAN = 3;
+    /** Sliding window for dynamic min/max (discard samples older than this). */
+    const RANGE_WINDOW_MS = 5000;
+    const SEND_MIN_INTERVAL_MS = 100;
+
+    const POSE = {
+      LEFT_SHOULDER: 11,
+      RIGHT_SHOULDER: 12,
+      LEFT_ELBOW: 13,
+      RIGHT_ELBOW: 14,
+      LEFT_WRIST: 15,
+      RIGHT_WRIST: 16,
+      LEFT_HIP: 23,
+      RIGHT_HIP: 24,
+      LEFT_KNEE: 25,
+      RIGHT_KNEE: 26,
+      LEFT_ANKLE: 27,
+      RIGHT_ANKLE: 28,
+    };
+
+    const POSE_CONNECTIONS = [
+      [POSE.LEFT_SHOULDER, POSE.RIGHT_SHOULDER],
+      [POSE.LEFT_SHOULDER, POSE.LEFT_ELBOW],
+      [POSE.LEFT_ELBOW, POSE.LEFT_WRIST],
+      [POSE.RIGHT_SHOULDER, POSE.RIGHT_ELBOW],
+      [POSE.RIGHT_ELBOW, POSE.RIGHT_WRIST],
+      [POSE.LEFT_SHOULDER, POSE.LEFT_HIP],
+      [POSE.RIGHT_SHOULDER, POSE.RIGHT_HIP],
+      [POSE.LEFT_HIP, POSE.RIGHT_HIP],
+      [POSE.LEFT_HIP, POSE.LEFT_KNEE],
+      [POSE.LEFT_KNEE, POSE.LEFT_ANKLE],
+      [POSE.RIGHT_HIP, POSE.RIGHT_KNEE],
+      [POSE.RIGHT_KNEE, POSE.RIGHT_ANKLE],
+    ];
+
+    const VIS_MIN = 0.35;
+    /** High-contrast overlay colors by line type (dark camera background). */
+    const LINE = {
+      skeleton: "#00F0FF", // cyan — pose bones + shoulder width
+      baseline: "#FFE600", // yellow — torso horizontal 0-line
+      drop: "#FF3D9A", // magenta — joint vertical drops
+      joint: "#FFFFFF",
+    };
+    const LINE_W = {
+      skeleton: 10,
+      baseline: 10,
+      drop: 10,
+      shoulder: 10,
+    };
+    const ESP32_USB_CHIPS = [
+      { vendorId: 0x1a86 },
+      { vendorId: 0x10c4 },
+      { vendorId: 0x0403 },
+      { vendorId: 0x067b },
+      { vendorId: 0x2341 },
+      { vendorId: 0x2a03 },
+      { vendorId: 0x03eb },
+      { vendorId: 0x303a, productId: 0x1001 },
+      { vendorId: 0x303a, productId: 0x0002 },
+    ];
+
+    const cameraPane = document.getElementById("cameraPane");
+    const video = document.getElementById("preview");
+    const overlay = document.getElementById("overlay");
+    const ctx = overlay.getContext("2d");
+    const btnStart = document.getElementById("btnStart");
+    const errEl = document.getElementById("err");
+    const loadStatusEl = document.getElementById("loadStatus");
+    const coordTextEl = document.getElementById("coordText");
+    const statFpsEl = document.getElementById("statFps");
+    const statPoseEl = document.getElementById("statPose");
+    const statElbowsEl = document.getElementById("statElbows");
+    const statKneesEl = document.getElementById("statKnees");
+    const statCalibEl = document.getElementById("statCalib");
+    const statControlEl = document.getElementById("statControl");
+    const btnResetCalib = document.getElementById("btnResetCalib");
+
+    const consoleLogEl = document.getElementById("consoleLog");
+    const serialOutputEl = document.getElementById("serialOutput");
+    const serialInputEl = document.getElementById("serialInput");
+    const serialContainer = document.getElementById("serialContainer");
+    const serialPortInfo = document.getElementById("serialPortInfo");
+    const openSerialBtn = document.getElementById("openSerialBtn");
+    const closeSerialBtn = document.getElementById("closeSerialBtn");
+    const clearSerialBtn = document.getElementById("clearSerialBtn");
+    const btnSerialTime = document.getElementById("btnSerialTime");
+    const btnSendSerial = document.getElementById("btnSendSerial");
+    const btnClearConsole = document.getElementById("btnClearConsole");
+    const btnConsoleTime = document.getElementById("btnConsoleTime");
+    const quickConnectBtn = document.getElementById("quickConnectBtn");
+    const robotIpInput = document.getElementById("robotIpInput");
+    const divider = document.getElementById("consoleSerialDivider");
+    const wifiOverlay = document.getElementById("wifiOverlay");
+    const wifiDialog = document.getElementById("wifiDialog");
+    const wifiDialogIp = document.getElementById("wifiDialogIp");
+
+    const IP_STORAGE_KEY = "camWalkingGame.robotIp";
+
+    let poseLandmarker = null;
+    let stream = null;
+    let rafId = 0;
+    let lastVideoTime = -1;
+    let fpsFrames = 0;
+    let fpsLastMs = performance.now();
+    let showConsoleTime = true;
+    let showSerialTime = true;
+    let currentDeviceIP = "";
+    let lastSendMs = 0;
+    let lastSentAngles = null;
+    let sendInFlight = false;
+    let lastControlSnapshot = null;
+
+    // ——— Console ———
+    function addConsoleMessage(message, type = "") {
+      const item = document.createElement("div");
+      item.className = "console-item" + (type ? " " + type : "");
+      if (showConsoleTime) {
+        const ts = document.createElement("span");
+        ts.className = "timestamp";
+        const d = new Date();
+        ts.textContent =
+          "[" +
+          String(d.getHours()).padStart(2, "0") +
+          ":" +
+          String(d.getMinutes()).padStart(2, "0") +
+          ":" +
+          String(d.getSeconds()).padStart(2, "0") +
+          "] ";
+        item.appendChild(ts);
+      }
+      const content = document.createElement("span");
+      content.className = "message-content";
+      content.textContent = message;
+      item.appendChild(content);
+      consoleLogEl.appendChild(item);
+      consoleLogEl.scrollTop = consoleLogEl.scrollHeight;
+    }
+
+    function clearConsole() {
+      consoleLogEl.innerHTML = "";
+    }
+
+    // ——— Serial UI helpers ———
+    function appendSerialLine(text, isOutgoing) {
+      const line = document.createElement("div");
+      if (showSerialTime) {
+        const d = new Date();
+        const stamp =
+          String(d.getHours()).padStart(2, "0") +
+          ":" +
+          String(d.getMinutes()).padStart(2, "0") +
+          ":" +
+          String(d.getSeconds()).padStart(2, "0");
+        line.textContent = `[${stamp}] ${isOutgoing ? ">> " : ""}${text}`;
+      } else {
+        line.textContent = (isOutgoing ? ">> " : "") + text;
+      }
+      if (isOutgoing) line.style.color = "#79c0ff";
+      serialOutputEl.appendChild(line);
+      serialOutputEl.scrollTop = serialOutputEl.scrollHeight;
+    }
+
+    function clearSerialOutput() {
+      serialOutputEl.innerHTML = "";
+    }
+
+    function setSerialConnectedUI(connected, portName) {
+      if (connected) {
+        document.body.classList.add("serial-connected");
+        serialContainer.classList.add("connected");
+        openSerialBtn.style.display = "none";
+        closeSerialBtn.style.display = "";
+        clearSerialBtn.style.display = "";
+        btnSerialTime.style.display = "";
+        serialPortInfo.style.display = "";
+        serialPortInfo.textContent = portName || "Serial Port @ 115200";
+      } else {
+        document.body.classList.remove("serial-connected");
+        serialContainer.classList.remove("connected");
+        openSerialBtn.style.display = "";
+        closeSerialBtn.style.display = "none";
+        clearSerialBtn.style.display = "none";
+        btnSerialTime.style.display = "none";
+        serialPortInfo.style.display = "none";
+        serialPortInfo.textContent = "";
+      }
+    }
+
+    function isValidIp(ip) {
+      if (!ip || typeof ip !== "string") return false;
+      const parts = ip.trim().split(".");
+      if (parts.length !== 4) return false;
+      return parts.every((p) => {
+        if (!/^\d{1,3}$/.test(p)) return false;
+        const n = Number(p);
+        return n >= 0 && n <= 255;
+      });
+    }
+
+    function loadSavedIp() {
+      try {
+        return localStorage.getItem(IP_STORAGE_KEY) || "";
+      } catch {
+        return "";
+      }
+    }
+
+    function saveIp(ip) {
+      try {
+        if (ip) localStorage.setItem(IP_STORAGE_KEY, ip);
+        else localStorage.removeItem(IP_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function setConnectedUi(connected) {
+      if (connected) quickConnectBtn.dataset.connected = "true";
+      else delete quickConnectBtn.dataset.connected;
+    }
+
+    function refreshConnectedUi() {
+      const serialOk = typeof transport !== "undefined" && transport && transport.isConnected();
+      const wifiOk = typeof petoiWs !== "undefined" && petoiWs && petoiWs.isConnected();
+      setConnectedUi(!!(serialOk || wifiOk));
+    }
+
+    /** Update IP box (+ optional persist / WS). */
+    function setDeviceIp(ip, { save = true, connectWs = true, log = true } = {}) {
+      const next = (ip || "").trim();
+      currentDeviceIP = next;
+      robotIpInput.value = next;
+      if (save) saveIp(next);
+      if (next) {
+        if (log) addConsoleMessage("Robot IP: " + next, "good");
+        if (connectWs) ensureWifiSocket(next);
+        else refreshConnectedUi();
+      } else {
+        refreshConnectedUi();
+      }
+    }
+
+    function clearDeviceIp(reason) {
+      currentDeviceIP = "";
+      robotIpInput.value = "";
+      saveIp("");
+      if (typeof petoiWs !== "undefined" && petoiWs) petoiWs.disconnect();
+      refreshConnectedUi();
+      if (reason) addConsoleMessage(reason, "warn");
+    }
+
+    function updateQuickConnectButton(ip) {
+      if (ip) setDeviceIp(ip, { save: true, connectWs: true, log: true });
+      else clearDeviceIp();
+    }
+
+    function showWifiDialog() {
+      const hint = robotIpInput.value.trim() || loadSavedIp() || currentDeviceIP;
+      wifiDialogIp.value = hint;
+      wifiOverlay.classList.add("visible");
+      wifiDialog.classList.add("visible");
+      setTimeout(() => wifiDialogIp.focus(), 50);
+    }
+
+    function hideWifiDialog() {
+      wifiOverlay.classList.remove("visible");
+      wifiDialog.classList.remove("visible");
+    }
+
+    async function connectWifiByIp(ip) {
+      const target = (ip || "").trim();
+      if (!isValidIp(target)) throw new Error("Invalid IP: " + target);
+      await petoiWs.connect(target);
+      currentDeviceIP = target;
+      robotIpInput.value = target;
+      saveIp(target);
+      refreshConnectedUi();
+      addConsoleMessage("WiFi connected: " + target, "good");
+    }
+
+    /** Petoi lowercase/uppercase command encoder (from WebCoding). */
+    function encodeCommand(token, params) {
+      if (token.charCodeAt(0) >= 65 && token.charCodeAt(0) <= 90) {
+        const byteArray = [];
+        for (let i = 0; i < token.length; i++) byteArray.push(token.charCodeAt(i));
+        for (let i = 0; i < params.length; i++) byteArray.push(params[i] & 0xff);
+        byteArray.push(126);
+        return "bytes:" + JSON.stringify(byteArray);
+      }
+      return params.length > 0 ? `${token}${params.join(" ")}` : token;
+    }
+
+    function clampToJointRange(v, b) {
+      const lo = b - ANGLE_RANGE;
+      const hi = b + ANGLE_RANGE;
+      return Math.max(lo, Math.min(hi, Math.round(v)));
+    }
+
+    /**
+     * Dynamically track pct min/max over a 5s sliding window;
+     * map pct∈[min,max] → angle∈[b+R, b-R] (raise → smaller angle).
+     */
+    class PctRangeTracker {
+      constructor(name) {
+        this.name = name;
+        this.reset();
+      }
+
+      reset() {
+        this.history = []; // { t, v }
+        this.smoothed = null;
+        this.minV = Infinity;
+        this.maxV = -Infinity;
+      }
+
+      get ready() {
+        return (
+          Number.isFinite(this.minV) &&
+          Number.isFinite(this.maxV) &&
+          this.maxV - this.minV >= MIN_PCT_SPAN
+        );
+      }
+
+      pruneAndRecompute(now) {
+        const cutoff = now - RANGE_WINDOW_MS;
+        while (this.history.length && this.history[0].t < cutoff) {
+          this.history.shift();
+        }
+        let minV = Infinity;
+        let maxV = -Infinity;
+        for (const sample of this.history) {
+          if (sample.v < minV) minV = sample.v;
+          if (sample.v > maxV) maxV = sample.v;
+        }
+        this.minV = minV;
+        this.maxV = maxV;
+      }
+
+      push(pct) {
+        if (pct == null || Number.isNaN(pct)) return null;
+        const now = performance.now();
+        this.smoothed =
+          this.smoothed == null ? pct : this.smoothed * 0.7 + pct * 0.3;
+        this.history.push({ t: now, v: this.smoothed });
+        this.pruneAndRecompute(now);
+        return this.smoothed;
+      }
+
+      /** Linear map: min→b+R, max→b-R. */
+      mapToAngle(pct, b) {
+        this.pruneAndRecompute(performance.now());
+        if (!this.ready || pct == null || Number.isNaN(pct)) return null;
+        const span = this.maxV - this.minV;
+        let t = (pct - this.minV) / span;
+        t = Math.max(0, Math.min(1, t));
+        const angle = b + ANGLE_RANGE - t * (2 * ANGLE_RANGE);
+        return clampToJointRange(angle, b);
+      }
+    }
+
+    const JOINT_NAMES = ["L-Elbow", "R-Elbow", "R-Knee", "L-Knee"];
+    const trackers = JOINT_NAMES.map((n) => new PctRangeTracker(n));
+
+    function resetCalibration() {
+      trackers.forEach((t) => t.reset());
+      lastSentAngles = null;
+      lastControlSnapshot = null;
+      sendInFlight = false;
+      lastSendMs = 0;
+      statCalibEl.textContent = t("tracking");
+      statControlEl.textContent = t("idle");
+      coordTextEl.textContent = t("resetDone", { range: ANGLE_RANGE });
+      addConsoleMessage(`Reset: cleared pct min/max; remapping to b±${ANGLE_RANGE}°`, "warn");
+    }
+
+    /** Lightweight WebSocket client for Petoi ws://IP:81 */
+    class SimplePetoiWs {
+      constructor() {
+        this.ws = null;
+        this.ip = "";
+      }
+
+      isConnected() {
+        return !!(this.ws && this.ws.readyState === WebSocket.OPEN);
+      }
+
+      connect(ip) {
+        if (!ip) return Promise.reject(new Error("No IP"));
+        if (this.isConnected() && this.ip === ip) return Promise.resolve();
+        this.disconnect();
+        this.ip = ip;
+        return new Promise((resolve, reject) => {
+          let settled = false;
+          const url = `ws://${ip}:81`;
+          let ws;
+          try {
+            ws = new WebSocket(url);
+          } catch (e) {
+            reject(e);
+            return;
+          }
+          this.ws = ws;
+          const timer = setTimeout(() => {
+            if (!settled) {
+              settled = true;
+              try {
+                ws.close();
+              } catch {
+                /* ignore */
+              }
+              reject(new Error("WebSocket timeout"));
+            }
+          }, 4000);
+          ws.onopen = () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            addConsoleMessage("WebSocket connected: " + url, "good");
+            resolve();
+          };
+          ws.onerror = () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            reject(new Error("WebSocket error"));
+          };
+          ws.onclose = () => {
+            if (this.ws === ws) this.ws = null;
+          };
+          ws.onmessage = (ev) => {
+            const text = typeof ev.data === "string" ? ev.data : "";
+            if (text && text.length < 200) appendSerialLine("WS " + text, false);
+          };
+        });
+      }
+
+      disconnect() {
+        if (this.ws) {
+          try {
+            this.ws.close();
+          } catch {
+            /* ignore */
+          }
+        }
+        this.ws = null;
+      }
+
+      sendCommand(command) {
+        if (!this.isConnected()) throw new Error("WebSocket not connected");
+        const message = {
+          type: "command",
+          taskId: String(Date.now()),
+          commands: [command],
+          timestamp: Date.now(),
+        };
+        this.ws.send(JSON.stringify(message));
+      }
+    }
+
+    const petoiWs = new SimplePetoiWs();
+
+    async function ensureWifiSocket(ip) {
+      if (!ip) return;
+      if (petoiWs.isConnected() && petoiWs.ip === ip) {
+        refreshConnectedUi();
+        return;
+      }
+      try {
+        await petoiWs.connect(ip);
+        refreshConnectedUi();
+      } catch (e) {
+        // Keep IP if serial is still usable; clear only when WiFi is the sole link.
+        if (transport.isConnected()) {
+          addConsoleMessage("WebSocket connect failed (serial still active): " + (e.message || e), "warn");
+          refreshConnectedUi();
+        } else {
+          clearDeviceIp("WiFi connect failed, cleared IP: " + (e.message || e));
+        }
+      }
+    }
+
+    async function sendRobotCommand(command, { logConsole = false } = {}) {
+      if (transport.isConnected()) {
+        await transport.send(command, { addNewline: true, logConsole });
+        return "serial";
+      }
+      if (petoiWs.isConnected()) {
+        petoiWs.sendCommand(command);
+        appendSerialLine(command, true);
+        if (logConsole) addConsoleMessage("WS Sent: " + command, "sent");
+        return "websocket";
+      }
+      throw new Error("No serial / WebSocket connection");
+    }
+
+    /**
+     * Dynamic min/max of pct → linear map to [b-R, b+R] (raise → smaller a).
+     * Send encodeCommand('i', [2,a0, 3,a1, 4,a2, 5,a3])
+     */
+    async function updateGaitControl(pcts) {
+      const a = [null, null, null, null];
+      const ranges = [];
+      let readyCount = 0;
+
+      for (let i = 0; i < 4; i++) {
+        const smoothed = trackers[i].push(pcts[i]);
+        const tr = trackers[i];
+        ranges.push({
+          min: tr.minV,
+          max: tr.maxV,
+          ready: tr.ready,
+        });
+        if (tr.ready) {
+          readyCount++;
+          a[i] = tr.mapToAngle(smoothed, B_BASE[i]);
+        } else {
+          a[i] = B_BASE[i];
+        }
+      }
+
+      statCalibEl.textContent =
+        readyCount === 4
+          ? t("mapReady", { range: ANGLE_RANGE })
+          : t("mapTracking", { n: readyCount });
+
+      const angles = a.map((v, i) => (v == null ? B_BASE[i] : v));
+      lastControlSnapshot = {
+        phase: readyCount === 4 ? "control" : "warmup",
+        pcts,
+        a: angles,
+        ranges,
+      };
+
+      if (readyCount < 4) {
+        statControlEl.textContent = t("expandMotion");
+        return null;
+      }
+
+      const linked = transport.isConnected() || petoiWs.isConnected();
+      const now = performance.now();
+      const changed =
+        !lastSentAngles ||
+        angles.some((v, i) => Math.abs(v - lastSentAngles[i]) >= 1);
+
+      if (!linked) {
+        statControlEl.textContent = t("notConnected") + " a=[" + angles.join(",") + "]";
+        return { a: angles, sent: false };
+      }
+      if (!changed || sendInFlight || now - lastSendMs < SEND_MIN_INTERVAL_MS) {
+        statControlEl.textContent = "a=[" + angles.join(",") + "]";
+        return { a: angles, sent: false };
+      }
+
+      const params = [];
+      for (let i = 0; i < 4; i++) {
+        params.push(ROBOT_JOINT_IDS[i], angles[i]);
+      }
+      const command = encodeCommand("i", params);
+
+      sendInFlight = true;
+      lastSendMs = now;
+      lastSentAngles = angles.slice();
+      try {
+        const via = await sendRobotCommand(command, { logConsole: false });
+        statControlEl.textContent = `a=[${angles.join(",")}] → ${via}`;
+        return { a: angles, sent: true, command, via };
+      } catch (e) {
+        statControlEl.textContent = t("sendFailed");
+        return { a: angles, sent: false, error: e.message || String(e) };
+      } finally {
+        sendInFlight = false;
+      }
+    }
+
+    // ——— Serial transport (adapted from PetoiWebCoding ComposerTransport) ———
+    function isLikelyBluetoothSerialPortInfo(portInfo) {
+      if (!portInfo || typeof portInfo !== "object") return false;
+      if (
+        typeof portInfo.bluetoothServiceClassId === "number" ||
+        typeof portInfo.bluetoothServiceClassId === "string"
+      ) {
+        return true;
+      }
+      return portInfo.usbVendorId == null && portInfo.usbProductId == null;
+    }
+
+    function buildWebSerialFilters() {
+      const filters = [];
+      ESP32_USB_CHIPS.forEach((chip) => {
+        if (chip.productId != null) {
+          filters.push({ usbVendorId: chip.vendorId, usbProductId: chip.productId });
+        } else {
+          filters.push({ usbVendorId: chip.vendorId });
+        }
+      });
+      filters.push({ bluetoothServiceClassId: 0x1101 });
+      return filters;
+    }
+
+    async function requestSerialPortWithFallback() {
+      const filters = buildWebSerialFilters();
+      try {
+        return await navigator.serial.requestPort({ filters });
+      } catch (error) {
+        if (error && error.name === "TypeError" && /bluetoothServiceClassId/i.test(error.message || "")) {
+          const usbOnly = filters.filter((item) => item.usbVendorId != null);
+          return await navigator.serial.requestPort({ filters: usbOnly });
+        }
+        if (error && error.name === "NotFoundError") {
+          return await navigator.serial.requestPort({});
+        }
+        throw error;
+      }
+    }
+
+    function getPortDisplayName(port) {
+      try {
+        const info = port.getInfo();
+        if (isLikelyBluetoothSerialPortInfo(info)) return "Bluetooth Serial";
+        const vid = info.usbVendorId != null ? "0x" + info.usbVendorId.toString(16) : "vid?";
+        const pid = info.usbProductId != null ? "0x" + info.usbProductId.toString(16) : "pid?";
+        return `USB Serial (${vid}:${pid})`;
+      } catch {
+        return "Serial Port";
+      }
+    }
+
+    async function openSerialPortWithRetry(targetPort, baudRate) {
+      const baudCandidates = [baudRate, 115200, 57600, 38400, 9600].filter(
+        (v, i, arr) => arr.indexOf(v) === i
+      );
+      let lastError = null;
+      for (const candidate of baudCandidates) {
+        try {
+          await targetPort.open({ baudRate: candidate });
+          return candidate;
+        } catch (error) {
+          lastError = error;
+          try {
+            await targetPort.close();
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      throw lastError || new Error("Failed to open serial port");
+    }
+
+    class RobotTransport {
+      constructor() {
+        this.port = null;
+        this.reader = null;
+        this.writer = null;
+        this.serialBuffer = "";
+        this.keepReading = false;
+        this.lineCarry = "";
+        this.onLine = null;
+      }
+
+      isConnected() {
+        return !!(this.writer && this.port && this.port.readable && this.port.writable);
+      }
+
+      async connect() {
+        if (!navigator.serial) {
+          throw new Error("Web Serial 不可用（请用 Chrome/Edge，且为 HTTPS 或 localhost）");
+        }
+        let ports = [];
+        try {
+          ports = await navigator.serial.getPorts();
+        } catch {
+          ports = [];
+        }
+        const wired = ports.filter((p) => {
+          try {
+            return !isLikelyBluetoothSerialPortInfo(p.getInfo());
+          } catch {
+            return false;
+          }
+        });
+        const target = wired[0] || (await requestSerialPortWithFallback());
+        await this.connectPort(target, BAUD);
+      }
+
+      async connectPort(port, baudRate = BAUD) {
+        await this.disconnect();
+        const actualBaud = await openSerialPortWithRetry(port, baudRate);
+        try {
+          await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+        } catch {
+          /* some ports ignore signals */
+        }
+        await new Promise((r) => setTimeout(r, 300));
+        this.port = port;
+        this.writer = port.writable.getWriter();
+        this.reader = port.readable.getReader();
+        this.keepReading = true;
+        this.serialBuffer = "";
+        this.lineCarry = "";
+        this.startReadLoop();
+        const name = getPortDisplayName(port) + " @ " + actualBaud;
+        setSerialConnectedUI(true, name);
+        refreshConnectedUi();
+        addConsoleMessage("Serial connected: " + name, "good");
+        return name;
+      }
+
+      startReadLoop() {
+        const decoder = new TextDecoder();
+        const loop = async () => {
+          while (this.keepReading && this.reader) {
+            try {
+              const { value, done } = await this.reader.read();
+              if (done) break;
+              if (!value) continue;
+              const chunk = decoder.decode(value, { stream: true });
+              this.serialBuffer += chunk;
+              if (this.serialBuffer.length > 16000) {
+                this.serialBuffer = this.serialBuffer.slice(-8000);
+              }
+              this.lineCarry += chunk;
+              const parts = this.lineCarry.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+              this.lineCarry = parts.pop() || "";
+              for (const line of parts) {
+                if (line.length) appendSerialLine(line, false);
+                if (this.onLine) this.onLine(line);
+                const ipMatch = line.match(/IP Address:\s*([0-9.]+)/i);
+                if (ipMatch) updateQuickConnectButton(ipMatch[1]);
+              }
+            } catch {
+              break;
+            }
+          }
+        };
+        loop();
+      }
+
+      async send(text, { addNewline = true, logConsole = true } = {}) {
+        if (!this.writer) throw new Error("Serial not connected");
+        let payload = text;
+        if (addNewline && !payload.endsWith("\n")) payload += "\n";
+        await this.writer.write(new TextEncoder().encode(payload));
+        appendSerialLine(payload.replace(/\n$/, ""), true);
+        if (logConsole) addConsoleMessage("Sent: " + payload.replace(/\n$/, ""), "sent");
+      }
+
+      async waitForToken(token, timeoutMs = 10000, fromIndex) {
+        const start = Date.now();
+        let lastIndex = typeof fromIndex === "number" ? fromIndex : this.serialBuffer.length;
+        while (Date.now() - start < timeoutMs) {
+          const currentLen = this.serialBuffer.length;
+          if (currentLen > lastIndex) {
+            const fragment = this.serialBuffer.substring(lastIndex, currentLen);
+            lastIndex = currentLen;
+            const lines = fragment
+              .replace(/\r\n/g, "\n")
+              .replace(/\r/g, "\n")
+              .split("\n")
+              .map((s) => s.trim())
+              .filter(Boolean);
+            if (lines.includes(token)) return true;
+          }
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        throw new Error("Token timeout: " + token);
+      }
+
+      async queryWifiIp(timeoutMs = 3000) {
+        const from = this.serialBuffer.length;
+        await this.send("w", { logConsole: true });
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+          const fragment = this.serialBuffer.slice(from);
+          const m = fragment.match(/IP Address:\s*([0-9.]+)/i);
+          if (m) {
+            updateQuickConnectButton(m[1]);
+            return m[1];
+          }
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return null;
+      }
+
+      async disconnect() {
+        this.keepReading = false;
+        if (this.reader) {
+          try {
+            await this.reader.cancel();
+          } catch {
+            /* ignore */
+          }
+          try {
+            this.reader.releaseLock();
+          } catch {
+            /* ignore */
+          }
+          this.reader = null;
+        }
+        if (this.writer) {
+          try {
+            this.writer.releaseLock();
+          } catch {
+            /* ignore */
+          }
+          this.writer = null;
+        }
+        if (this.port) {
+          try {
+            await this.port.close();
+          } catch {
+            /* ignore */
+          }
+          this.port = null;
+        }
+        setSerialConnectedUI(false);
+      }
+    }
+
+    const transport = new RobotTransport();
+
+    async function openSerialPort() {
+      try {
+        await transport.connect();
+      } catch (e) {
+        if (e && e.name === "NotFoundError") {
+          addConsoleMessage("Serial port selection cancelled", "warn");
+          return;
+        }
+        addConsoleMessage("Serial connect failed: " + (e.message || e), "error");
+      }
+    }
+
+    async function closeSerialPort() {
+      await transport.disconnect();
+      refreshConnectedUi();
+      addConsoleMessage("Serial disconnected", "warn");
+    }
+
+    async function sendSerialData() {
+      const value = serialInputEl.value;
+      if (!value) return;
+      try {
+        await transport.send(value);
+        serialInputEl.value = "";
+      } catch (e) {
+        addConsoleMessage("Send failed: " + (e.message || e), "error");
+      }
+    }
+
+    /**
+     * Quick Connect:
+     * - Serial connected → query IP via `w`, update IP box
+     * - No serial + saved/typed IP → WebSocket connect; fail → clear IP + WiFi dialog
+     * - No serial + no IP → WiFi dialog
+     */
+    async function quickConnect() {
+      quickConnectBtn.disabled = true;
+      try {
+        if (transport.isConnected()) {
+          addConsoleMessage("Quick Connect: serial active, querying IP (w)…");
+          const ip = await transport.queryWifiIp(3500);
+          if (ip) {
+            setDeviceIp(ip, { save: true, connectWs: true, log: false });
+            addConsoleMessage("Quick Connect OK (serial): " + ip, "good");
+            refreshConnectedUi();
+          } else {
+            addConsoleMessage("No IP from serial — open WiFi dialog", "warn");
+            showWifiDialog();
+          }
+          return;
+        }
+
+        const ip = (robotIpInput.value.trim() || loadSavedIp() || "").trim();
+        if (ip) {
+          addConsoleMessage("Quick Connect: no serial, connecting WiFi " + ip + "…");
+          try {
+            await connectWifiByIp(ip);
+            return;
+          } catch (e) {
+            clearDeviceIp("WiFi connect failed, cleared IP: " + (e.message || e));
+            showWifiDialog();
+            return;
+          }
+        }
+
+        addConsoleMessage("Quick Connect: no serial / no saved IP — open WiFi dialog", "warn");
+        showWifiDialog();
+      } catch (e) {
+        addConsoleMessage("Quick Connect failed: " + (e.message || e), "error");
+        showWifiDialog();
+      } finally {
+        quickConnectBtn.disabled = false;
+      }
+    }
+
+    async function connectWifiFromDialog() {
+      const ip = wifiDialogIp.value.trim();
+      if (!isValidIp(ip)) {
+        addConsoleMessage("Enter a valid IP address", "error");
+        return;
+      }
+      try {
+        await connectWifiByIp(ip);
+        hideWifiDialog();
+      } catch (e) {
+        clearDeviceIp("WiFi connect failed, cleared IP: " + (e.message || e));
+      }
+    }
+
+    async function confirmWifiSettings() {
+      const ssid = document.getElementById("wifiSsid").value.trim();
+      const password = document.getElementById("wifiPassword").value;
+      if (!ssid) {
+        addConsoleMessage("SSID is required for Send Config", "error");
+        return;
+      }
+      if (!transport.isConnected()) {
+        addConsoleMessage("Send Config needs serial — use Connect WiFi with IP instead", "error");
+        return;
+      }
+      try {
+        await transport.send(`w%${ssid}%${password}`);
+        addConsoleMessage("WiFi config sent, querying IP…");
+        hideWifiDialog();
+        const ip = await transport.queryWifiIp(8000);
+        if (!ip) addConsoleMessage("WiFi config sent; IP not reported yet", "warn");
+      } catch (e) {
+        addConsoleMessage("WiFi config failed: " + (e.message || e), "error");
+      }
+    }
+
+    // Horizontal resize between console / serial
+    (function setupDivider() {
+      let dragging = false;
+      let startY = 0;
+      let startConsoleH = 0;
+      let startSerialH = 0;
+      const consoleWindow = document.getElementById("consoleWindow");
+
+      divider.addEventListener("mousedown", (e) => {
+        if (!serialContainer.classList.contains("connected")) return;
+        dragging = true;
+        divider.classList.add("active");
+        startY = e.clientY;
+        startConsoleH = consoleWindow.getBoundingClientRect().height;
+        startSerialH = serialContainer.getBoundingClientRect().height;
+        e.preventDefault();
+      });
+      window.addEventListener("mousemove", (e) => {
+        if (!dragging) return;
+        const dy = e.clientY - startY;
+        const newConsole = Math.max(80, startConsoleH + dy);
+        const newSerial = Math.max(120, startSerialH - dy);
+        consoleWindow.style.flex = "none";
+        serialContainer.style.flex = "none";
+        consoleWindow.style.height = newConsole + "px";
+        serialContainer.style.height = newSerial + "px";
+      });
+      window.addEventListener("mouseup", () => {
+        dragging = false;
+        divider.classList.remove("active");
+      });
+    })();
+
+    // ——— Pose / camera ———
+    function showError(msg) {
+      errEl.textContent = msg;
+      errEl.classList.add("visible");
+    }
+
+    function clearError() {
+      errEl.textContent = "";
+      errEl.classList.remove("visible");
+    }
+
+    function paneSize() {
+      return {
+        w: cameraPane.clientWidth || window.innerWidth,
+        h: cameraPane.clientHeight || window.innerHeight,
+      };
+    }
+
+    function resizeOverlay() {
+      const dpr = window.devicePixelRatio || 1;
+      const { w, h } = paneSize();
+      overlay.width = Math.round(w * dpr);
+      overlay.height = Math.round(h * dpr);
+      overlay.style.width = w + "px";
+      overlay.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener("resize", resizeOverlay);
+    if (typeof ResizeObserver !== "undefined") {
+      new ResizeObserver(resizeOverlay).observe(cameraPane);
+    }
+
+    function landmarkToClient(lm) {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const { w: cw, h: ch } = paneSize();
+      if (!vw || !vh) return { x: 0, y: 0, vis: 0 };
+      const scale = Math.max(cw / vw, ch / vh);
+      const dispW = vw * scale;
+      const dispH = vh * scale;
+      const ox = (cw - dispW) / 2;
+      const oy = (ch - dispH) / 2;
+      const nx = 1 - lm.x;
+      return {
+        x: ox + nx * vw * scale,
+        y: oy + lm.y * vh * scale,
+        vis: lm.visibility ?? lm.presence ?? 1,
+      };
+    }
+
+    function drawJoint(pt, color, radius, label) {
+      if (pt.vis < VIS_MIN) return;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(0,0,0,0.55)";
+      ctx.stroke();
+      if (label) {
+        ctx.font = "600 12px system-ui, sans-serif";
+        ctx.fillStyle = "#fff";
+        ctx.strokeStyle = "rgba(0,0,0,0.75)";
+        ctx.lineWidth = 3;
+        ctx.strokeText(label, pt.x + radius + 4, pt.y - 4);
+        ctx.fillText(label, pt.x + radius + 4, pt.y - 4);
+      }
+    }
+
+    function drawSegment(a, b, color, width) {
+      if (a.vis < VIS_MIN || b.vis < VIS_MIN) return;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.stroke();
+    }
+
+    /** Torso center = midpoint of mid-shoulder and mid-hip. */
+    function torsoCenter(pts) {
+      const ls = pts[POSE.LEFT_SHOULDER];
+      const rs = pts[POSE.RIGHT_SHOULDER];
+      const lh = pts[POSE.LEFT_HIP];
+      const rh = pts[POSE.RIGHT_HIP];
+      const parts = [ls, rs, lh, rh].filter((p) => p && p.vis >= VIS_MIN);
+      if (parts.length < 2) return null;
+      let sx = 0;
+      let sy = 0;
+      for (const p of parts) {
+        sx += p.x;
+        sy += p.y;
+      }
+      return { x: sx / parts.length, y: sy / parts.length, vis: 1 };
+    }
+
+    function shoulderWidthPx(pts) {
+      const ls = pts[POSE.LEFT_SHOULDER];
+      const rs = pts[POSE.RIGHT_SHOULDER];
+      if (!ls || !rs || ls.vis < VIS_MIN || rs.vis < VIS_MIN) return 0;
+      const dx = ls.x - rs.x;
+      const dy = ls.y - rs.y;
+      return Math.hypot(dx, dy);
+    }
+
+    /**
+     * Y offset relative to torso center (0,0), UP positive (screen Y is down).
+     * Raising a limb → pct increases → s = pct - mid increases → a = b - s decreases.
+     */
+    function jointYOffsetPct(joint, center, shoulderW) {
+      if (!joint || joint.vis < VIS_MIN || !center || shoulderW < 1) return null;
+      const offsetY = center.y - joint.y;
+      return {
+        offsetY,
+        pct: (offsetY / shoulderW) * 100,
+      };
+    }
+
+    function fmtPct(pct) {
+      if (pct == null || Number.isNaN(pct)) return "—";
+      const sign = pct > 0 ? "+" : "";
+      return sign + pct.toFixed(0) + "%";
+    }
+
+    function drawHorizontalThroughCenter(center, cw) {
+      ctx.save();
+      ctx.setLineDash([22, 14]);
+      ctx.strokeStyle = LINE.baseline;
+      ctx.lineWidth = LINE_W.baseline;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(0, center.y);
+      ctx.lineTo(cw, center.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Origin marker
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, 11, 0, Math.PI * 2);
+      ctx.fillStyle = LINE.baseline;
+      ctx.fill();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#000";
+      ctx.stroke();
+      ctx.font = "800 16px system-ui, sans-serif";
+      ctx.fillStyle = LINE.baseline;
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 5;
+      ctx.strokeText("0,0", center.x + 14, center.y - 12);
+      ctx.fillText("0,0", center.x + 14, center.y - 12);
+      ctx.restore();
+    }
+
+    /** Vertical drop from joint to the torso horizontal line; label % of shoulder width. */
+    function drawJointDropToCenter(joint, center, pct, label) {
+      if (!joint || joint.vis < VIS_MIN) return;
+      ctx.save();
+      ctx.strokeStyle = LINE.drop;
+      ctx.lineWidth = LINE_W.drop;
+      ctx.lineCap = "round";
+      ctx.setLineDash([12, 8]);
+      ctx.beginPath();
+      ctx.moveTo(joint.x, joint.y);
+      ctx.lineTo(joint.x, center.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Foot on the horizontal line
+      ctx.beginPath();
+      ctx.arc(joint.x, center.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = LINE.drop;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#000";
+      ctx.stroke();
+
+      const text = label + " " + fmtPct(pct);
+      const midY = (joint.y + center.y) / 2;
+      const textX = joint.x + 12;
+      ctx.font = "800 17px system-ui, sans-serif";
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = "#000";
+      ctx.fillStyle = LINE.drop;
+      ctx.strokeText(text, textX, midY);
+      ctx.fillText(text, textX, midY);
+      ctx.restore();
+    }
+
+    function render(poseResult) {
+      const { w: cw, h: ch } = paneSize();
+      ctx.clearRect(0, 0, cw, ch);
+
+      const poses = poseResult?.landmarks || [];
+      let elbowCount = 0;
+      let kneeCount = 0;
+      const lines = [];
+
+      for (let pi = 0; pi < poses.length; pi++) {
+        const pts = poses[pi].map(landmarkToClient);
+        const center = torsoCenter(pts);
+        const shoulderW = shoulderWidthPx(pts);
+
+        for (const [i, j] of POSE_CONNECTIONS) {
+          drawSegment(pts[i], pts[j], LINE.skeleton, LINE_W.skeleton);
+        }
+
+        for (const idx of [
+          POSE.LEFT_SHOULDER, POSE.RIGHT_SHOULDER,
+          POSE.LEFT_WRIST, POSE.RIGHT_WRIST,
+          POSE.LEFT_HIP, POSE.RIGHT_HIP,
+          POSE.LEFT_ANKLE, POSE.RIGHT_ANKLE,
+        ]) {
+          drawJoint(pts[idx], LINE.skeleton, 7);
+        }
+
+        // Shoulder width guide (same type as skeleton)
+        const ls = pts[POSE.LEFT_SHOULDER];
+        const rs = pts[POSE.RIGHT_SHOULDER];
+        if (ls.vis >= VIS_MIN && rs.vis >= VIS_MIN) {
+          drawSegment(ls, rs, LINE.skeleton, LINE_W.shoulder);
+        }
+
+        const le = pts[POSE.LEFT_ELBOW];
+        const re = pts[POSE.RIGHT_ELBOW];
+        const lk = pts[POSE.LEFT_KNEE];
+        const rk = pts[POSE.RIGHT_KNEE];
+
+        if (le.vis >= VIS_MIN) elbowCount++;
+        if (re.vis >= VIS_MIN) elbowCount++;
+        if (lk.vis >= VIS_MIN) kneeCount++;
+        if (rk.vis >= VIS_MIN) kneeCount++;
+
+        if (center) {
+          drawHorizontalThroughCenter(center, cw);
+
+          // Channel order 1..4 → LE, RE, RK, LK → robot joints 2,3,4,5
+          const targets = [
+            { joint: le, tag: "LE", name: "L-Elbow" },
+            { joint: re, tag: "RE", name: "R-Elbow" },
+            { joint: rk, tag: "RK", name: "R-Knee" },
+            { joint: lk, tag: "LK", name: "L-Knee" },
+          ];
+
+          const pcts = targets.map((t) => {
+            const off = jointYOffsetPct(t.joint, center, shoulderW);
+            return off ? off.pct : null;
+          });
+
+          // Only drive robot from primary pose
+          if (pi === 0) updateGaitControl(pcts);
+
+          lines.push(`Pose#${pi + 1}  shoulderW=${shoulderW.toFixed(0)}px`);
+          lines.push(`  center (0,0) @ ${Math.round(center.x)}, ${Math.round(center.y)}`);
+          lines.push(`  map: pct[min..max] → a[b+${ANGLE_RANGE}..b-${ANGLE_RANGE}]`);
+
+          for (let ti = 0; ti < targets.length; ti++) {
+            const t = targets[ti];
+            const pct = pcts[ti];
+            drawJointDropToCenter(t.joint, center, pct, t.tag);
+            const tr = trackers[ti];
+            let extra = fmtPct(pct);
+            if (tr.ready) {
+              const ang = tr.mapToAngle(pct, B_BASE[ti]);
+              extra += `  [${tr.minV.toFixed(0)}..${tr.maxV.toFixed(0)}]→a=${ang}`;
+            } else if (Number.isFinite(tr.minV)) {
+              extra += `  min=${tr.minV.toFixed(0)} max=${tr.maxV.toFixed(0)}`;
+            }
+            lines.push(`  ${t.name.padEnd(8)} ${extra}`);
+          }
+
+          if (
+            pi === 0 &&
+            lastControlSnapshot &&
+            (lastControlSnapshot.phase === "control" ||
+              lastControlSnapshot.phase === "warmup")
+          ) {
+            const { a } = lastControlSnapshot;
+            lines.push(`  b=[${B_BASE.join(",")}]  range=±${ANGLE_RANGE}`);
+            lines.push(`  a=[${a.join(",")}]`);
+            lines.push(`  i ${ROBOT_JOINT_IDS.map((id, i) => id + " " + a[i]).join(" ")}`);
+          }
+        } else {
+          lines.push(`Pose#${pi + 1}`);
+          lines.push("  torso center unavailable");
+        }
+
+        drawJoint(le, LINE.drop, 12, "L-Elbow");
+        drawJoint(re, LINE.drop, 12, "R-Elbow");
+        drawJoint(lk, LINE.drop, 12, "L-Knee");
+        drawJoint(rk, LINE.drop, 12, "R-Knee");
+      }
+
+      if (!poses.length) {
+        coordTextEl.textContent = t("noBody");
+      } else {
+        coordTextEl.textContent = lines.join("\n");
+      }
+
+      statPoseEl.textContent = String(poses.length);
+      statElbowsEl.textContent = String(elbowCount);
+      statKneesEl.textContent = String(kneeCount);
+    }
+
+    function tick() {
+      rafId = requestAnimationFrame(tick);
+      if (!poseLandmarker) return;
+      if (video.readyState < 2) return;
+
+      const now = performance.now();
+      if (video.currentTime === lastVideoTime) return;
+      lastVideoTime = video.currentTime;
+
+      let poseResult = null;
+      try {
+        poseResult = poseLandmarker.detectForVideo(video, Math.round(now));
+      } catch (e) {
+        console.error(e);
+        return;
+      }
+
+      render(poseResult);
+
+      fpsFrames++;
+      if (now - fpsLastMs >= 1000) {
+        statFpsEl.textContent = String(fpsFrames);
+        fpsFrames = 0;
+        fpsLastMs = now;
+      }
+    }
+
+    async function startCamera() {
+      clearError();
+      btnStart.disabled = true;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: "user",
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+        video.srcObject = stream;
+        await video.play();
+        document.body.classList.add("camera-on");
+        resizeOverlay();
+        lastVideoTime = -1;
+        rafId = requestAnimationFrame(tick);
+        addConsoleMessage(`Camera started — move limbs to expand pct min/max (map to b±${ANGLE_RANGE}°)`, "good");
+      } catch (e) {
+        btnStart.disabled = false;
+        showError(t("cameraError", { msg: e.message || e }));
+        addConsoleMessage("Camera failed: " + (e.message || e), "error");
+      }
+    }
+
+    function stopCamera() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      document.body.classList.remove("camera-on");
+    }
+
+    async function createPoseLandmarker(vision, delegate) {
+      return PoseLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: POSE_MODEL, delegate },
+        runningMode: "VIDEO",
+        numPoses: 1,
+        minPoseDetectionConfidence: 0.5,
+        minPosePresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+    }
+
+    async function initPose() {
+      try {
+        const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+        loadStatusEl.dataset.i18nKey = "loadingPose";
+        loadStatusEl.textContent = t("loadingPose");
+        try {
+          poseLandmarker = await createPoseLandmarker(vision, "GPU");
+        } catch (gpuErr) {
+          console.warn("GPU delegate failed, falling back to CPU", gpuErr);
+          loadStatusEl.dataset.i18nKey = "loadingCpu";
+          loadStatusEl.textContent = t("loadingCpu");
+          poseLandmarker = await createPoseLandmarker(vision, "CPU");
+        }
+        loadStatusEl.dataset.i18nKey = "modelReady";
+        loadStatusEl.textContent = t("modelReady");
+        btnStart.disabled = false;
+        addConsoleMessage("Pose model ready", "good");
+      } catch (e) {
+        console.error(e);
+        loadStatusEl.dataset.i18nKey = "modelFailed";
+        loadStatusEl.textContent = t("modelFailed");
+        showError(t("mediapipeError", { msg: e.message || e }));
+        addConsoleMessage("Pose model failed: " + (e.message || e), "error");
+      }
+    }
+
+    // Events
+    btnStart.addEventListener("click", startCamera);
+    openSerialBtn.addEventListener("click", openSerialPort);
+    closeSerialBtn.addEventListener("click", closeSerialPort);
+    clearSerialBtn.addEventListener("click", clearSerialOutput);
+    btnSendSerial.addEventListener("click", sendSerialData);
+    serialInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendSerialData();
+    });
+    btnClearConsole.addEventListener("click", clearConsole);
+    btnConsoleTime.addEventListener("click", () => {
+      showConsoleTime = !showConsoleTime;
+      btnConsoleTime.classList.toggle("active", showConsoleTime);
+    });
+    btnSerialTime.addEventListener("click", () => {
+      showSerialTime = !showSerialTime;
+      btnSerialTime.classList.toggle("active", showSerialTime);
+    });
+    btnResetCalib.addEventListener("click", resetCalibration);
+    document.getElementById("btnResetCalibHud").addEventListener("click", resetCalibration);
+    document.getElementById("langSelect").addEventListener("change", (e) => {
+      currentLang = e.target.value === "zh" ? "zh" : "en";
+      try {
+        localStorage.setItem(LANG_STORAGE_KEY, currentLang);
+      } catch {
+        /* ignore */
+      }
+      applyI18n();
+    });
+    quickConnectBtn.addEventListener("click", quickConnect);
+    robotIpInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") quickConnect();
+    });
+    robotIpInput.addEventListener("change", () => {
+      const ip = robotIpInput.value.trim();
+      if (ip && isValidIp(ip)) {
+        currentDeviceIP = ip;
+        saveIp(ip);
+      }
+    });
+    document.getElementById("wifiCancel").addEventListener("click", hideWifiDialog);
+    wifiOverlay.addEventListener("click", hideWifiDialog);
+    document.getElementById("wifiConnectIp").addEventListener("click", connectWifiFromDialog);
+    wifiDialogIp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") connectWifiFromDialog();
+    });
+    document.getElementById("wifiQuery").addEventListener("click", async () => {
+      if (!transport.isConnected()) {
+        addConsoleMessage("Query IP needs serial connection", "warn");
+        return;
+      }
+      hideWifiDialog();
+      const ip = await transport.queryWifiIp(3500);
+      if (!ip) {
+        addConsoleMessage("No IP reported", "warn");
+        showWifiDialog();
+      }
+    });
+    document.getElementById("wifiConfirm").addEventListener("click", confirmWifiSettings);
+
+    window.addEventListener("pagehide", () => {
+      stopCamera();
+      transport.disconnect();
+      petoiWs.disconnect();
+    });
+    window.addEventListener("beforeunload", () => {
+      stopCamera();
+      transport.disconnect();
+      petoiWs.disconnect();
+    });
+
+    loadStatusEl.dataset.i18nKey = "loadingModel";
+    loadStatusEl.textContent = t("loadingModel");
+    coordTextEl.textContent = t("waitingDetect");
+    applyI18n();
+    if (!navigator.serial) {
+      addConsoleMessage("Web Serial unsupported in this browser", "warn");
+    } else {
+      addConsoleMessage("Ready. Use Quick Connect or Connect Serial Port.", "good");
+    }
+    const savedIp = loadSavedIp();
+    if (savedIp) {
+      robotIpInput.value = savedIp;
+      currentDeviceIP = savedIp;
+      addConsoleMessage("Loaded saved IP: " + savedIp, "good");
+    }
+    addConsoleMessage(
+      `Gait map: LE,RE,RK,LK pct min/max → a in b±${ANGLE_RANGE}; raise→smaller angle; i 2..5`,
+      "good"
+    );
+    initPose();
+  </script>
+</body>
+</html>
