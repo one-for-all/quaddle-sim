@@ -1,3 +1,4 @@
+use gibbon_electronics::servo::petoi_p1l::PetoiP1L;
 use gorilla_physics::{
     PI, WORLD_FRAME,
     hybrid::{
@@ -196,6 +197,10 @@ fn build_leg(
 
     let motor_arm_frame = format!("{}_motor_arm", name);
     let motor_arm = build_rigid(&motor_arm_frame, &motor_arm_frame, urdf, meshes);
+    // The P1L driving this joint is part of its drivetrain: the rotor seen
+    // through the gearbox is most of what the servo torque accelerates, and
+    // the gear friction is what holds the joint still under a small torque.
+    let servo = PetoiP1L::new().params;
     let motor_arm_joint = build_joint(
         &motor_arm_frame,
         body_frame,
@@ -203,7 +208,9 @@ fn build_leg(
         urdf,
         -Vector3::z_axis(),
         zero_q,
-    );
+    )
+    .with_armature(servo.rotor_inertia)
+    .with_dry_friction(servo.dry_friction);
 
     let spring_frame = format!("{}_spring", name);
     let spring = build_rigid(&spring_frame, &spring_frame, urdf, meshes);

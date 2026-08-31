@@ -3,8 +3,11 @@ use std::collections::VecDeque;
 use esp32rs::{
     esp32::CPU_FREQUENCY,
     esp32s3::esp32s3::{ESP32S3, S3_CPU_SLOWDOWN_FACTOR},
-    servo::petoi_p1l::PetoiP1L,
     symbols::Symbols,
+};
+use gibbon_electronics::{
+    SignalLevel::{HIGH, LOW},
+    servo::petoi_p1l::PetoiP1L,
 };
 use gorilla_physics::{
     hybrid::{articulated::Articulated, control::ArticulatedController},
@@ -77,7 +80,7 @@ impl QuaddleESP32S3Controller {
 
         Self {
             esp32s3,
-            leg_servos: [PetoiP1L::new(); 4],
+            leg_servos: std::array::from_fn(|_| PetoiP1L::new()),
             uart_payload: VecDeque::new(),
         }
     }
@@ -98,11 +101,10 @@ impl ArticulatedController for QuaddleESP32S3Controller {
             }
 
             for (i, servo) in self.leg_servos.iter_mut().enumerate() {
-                if let Some(pin) = self.esp32s3.read_pin(pins[i]) {
-                    servo.step(cycle_dt, pin);
-                } else {
-                    servo.step(cycle_dt, false);
-                }
+                // An unreadable pin is an idle one, i.e. no pulse.
+                let pin = self.esp32s3.read_pin(pins[i]).unwrap_or(false);
+                servo.read(if pin { HIGH } else { LOW });
+                servo.step(cycle_dt);
             }
         }
     }
@@ -142,9 +144,8 @@ impl ArticulatedController for QuaddleESP32S3Controller {
             let offset = if body_dof != 0 { 1 } else { 0 };
             let q = qs[joint_index + offset];
             let v = vs[joint_index];
-            servo.angle = q;
-            servo.vel = v;
-            let torque = servo.torque() * 0.3;
+            servo.measure(q, v);
+            let torque = servo.torque();
             let damping = 0.; // -1e-4 * v;
             torques[joint_index] += torque + damping;
         }

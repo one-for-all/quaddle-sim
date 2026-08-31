@@ -6,6 +6,9 @@ edition = "2024"
 [dependencies]
 gorilla-physics = { path = "../gorilla-physics/"}
 esp32rs = {path = "../esp32rs/"}
+# The leg servos: gibbon-electronics turns the pulses coming out of the ESP32's
+# pins into torque. Its `Float` is f64, as esp32rs' and gorilla-physics' are.
+gibbon-electronics = { path = "../gibbon-electronics/" }
 nalgebra = { version = "0.33", features = [] }
 urdf-rs = "0.9.0"
 futures = "0.3"
