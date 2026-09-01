@@ -17,8 +17,11 @@ use gorilla_physics::{
 };
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 use gorilla_physics::{
-    collision::halfspace::HalfSpace, hybrid::control::NullArticulatedController,
+    collision::halfspace::HalfSpace,
+    hybrid::{builders::import_static_body, control::NullArticulatedController},
 };
+#[cfg(any(target_arch = "wasm32", rust_analyzer))]
+use nalgebra::{Isometry3, Translation3, UnitQuaternion};
 use urdf_rs::Robot;
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
@@ -40,7 +43,7 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     let body_joint = Joint::new_floating(Transform3D::new_xyz_rpy(
         body_frame,
         WORLD_FRAME,
-        &vec![0., 0., 0.06],
+        &vec![0., 0., 0.06 + 0.82],
         &vec![0., 0., -PI / 2.],
     ));
 
@@ -166,6 +169,15 @@ pub async fn createQuaddle() -> InterfaceHybrid {
     // let controller = QuaddleController::new();
     let controller = QuaddleESP32S3Controller::new().await;
     state.set_controller(0, controller);
+
+    // Add table
+    let mut table = import_static_body("mesh/table/table.obj").await;
+    table.update_pose(Isometry3::from_parts(
+        Translation3::new(0.6, 0., 0.),
+        UnitQuaternion::identity(),
+    ));
+    table.show_visual = false;
+    state.add_static_body(table);
 
     InterfaceHybrid::new(state)
 }
