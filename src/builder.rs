@@ -178,11 +178,11 @@ pub async fn createQuaddle() -> InterfaceHybrid {
     table.show_visual = false;
     state.add_static_body(table);
 
-    // Add a cube to interact with
-    let m = 0.02;
-    let w = 0.08;
-    let cube = Articulated::new_cube_at("cube", m, w, &vector![-0.3, 0., 2. * w + 0.82]);
-    state.add_articulated(cube);
+    // // Add a cube to interact with
+    // let m = 0.02;
+    // let w = 0.08;
+    // let cube = Articulated::new_cube_at("cube", m, w, &vector![-0.3, 0.2, 2. * w + 0.82]);
+    // state.add_articulated(cube);
 
     // Add ground
     state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
