@@ -163,7 +163,6 @@ pub async fn createQuaddle() -> InterfaceHybrid {
     let mut meshes = URDFMeshes::new(&urdf_robot).await;
 
     let mut state = build_quaddle(&mut meshes, &urdf_robot);
-    state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
     state.articulated[0].show_visual = false;
 
     // let controller = QuaddleController::new();
@@ -178,6 +177,15 @@ pub async fn createQuaddle() -> InterfaceHybrid {
     ));
     table.show_visual = false;
     state.add_static_body(table);
+
+    // Add a cube to interact with
+    let m = 0.02;
+    let w = 0.08;
+    let cube = Articulated::new_cube_at("cube", m, w, &vector![-0.3, 0., 2. * w + 0.82]);
+    state.add_articulated(cube);
+
+    // Add ground
+    state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));
 
     InterfaceHybrid::new(state)
 }
