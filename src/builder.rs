@@ -38,7 +38,7 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     state.set_friction_mu(1.0);
 
     let body_frame = "body";
-    let mut body = build_rigid(body_frame, "body", urdf, meshes);
+    let mut body = build_rigid(body_frame, "body", urdf, meshes, false);
     add_quaddle_body_collision(&mut body, urdf);
     let body_joint = Joint::new_floating(Transform3D::new_xyz_rpy(
         body_frame,
@@ -204,7 +204,7 @@ fn build_leg(
 
     // left-front
     let thigh_frame = format!("{}_thigh", name); // same as link name
-    let thigh = build_rigid(&thigh_frame, &thigh_frame, urdf, meshes);
+    let thigh = build_rigid(&thigh_frame, &thigh_frame, urdf, meshes, false);
     let thigh_joint = build_joint(
         &thigh_frame,
         body_frame,
@@ -216,7 +216,7 @@ fn build_leg(
     // let lf_thigh_joint = build_fixed_joint(lf_thigh_frame, body_frame, "left_front_thigh", urdf);
 
     let motor_arm_frame = format!("{}_motor_arm", name);
-    let motor_arm = build_rigid(&motor_arm_frame, &motor_arm_frame, urdf, meshes);
+    let motor_arm = build_rigid(&motor_arm_frame, &motor_arm_frame, urdf, meshes, false);
     // The P1L driving this joint is part of its drivetrain: the rotor seen
     // through the gearbox is most of what the servo torque accelerates, and
     // the gear friction is what holds the joint still under a small torque.
@@ -233,7 +233,7 @@ fn build_leg(
     .with_dry_friction(servo.dry_friction);
 
     let spring_frame = format!("{}_spring", name);
-    let spring = build_rigid(&spring_frame, &spring_frame, urdf, meshes);
+    let spring = build_rigid(&spring_frame, &spring_frame, urdf, meshes, false);
     let spring_joint = build_joint(
         &spring_frame,
         &motor_arm_frame,
@@ -244,7 +244,7 @@ fn build_leg(
     );
 
     let leg_frame = format!("{}_leg", name);
-    let mut leg = build_rigid(&leg_frame, &leg_frame, urdf, meshes);
+    let mut leg = build_rigid(&leg_frame, &leg_frame, urdf, meshes, false);
     add_quaddle_leg_collision(&mut leg, &name, urdf);
     let leg_joint = build_joint(
         &leg_frame,
@@ -256,7 +256,7 @@ fn build_leg(
     );
 
     let wheel_frame = format!("{}_wheel", name);
-    let wheel = build_rigid(&wheel_frame, &wheel_frame, urdf, meshes);
+    let wheel = build_rigid(&wheel_frame, &wheel_frame, urdf, meshes, false);
     let wheel_joint = build_joint(
         &wheel_frame,
         &leg_frame,
@@ -267,7 +267,7 @@ fn build_leg(
     );
 
     let wheel_tip_frame = format!("{}_wheel_tip", name);
-    let mut wheel_tip = build_rigid(&wheel_tip_frame, &wheel_tip_frame, urdf, meshes);
+    let mut wheel_tip = build_rigid(&wheel_tip_frame, &wheel_tip_frame, urdf, meshes, false);
     add_quaddle_wheel_tip_collision(&mut wheel_tip, &name, urdf);
     let wheel_tip_joint = build_joint(
         &wheel_tip_frame,
