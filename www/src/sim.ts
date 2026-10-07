@@ -6,8 +6,8 @@ import { Euler, Vector3 } from "three";
 let _simulator: Simulator | null = null;
 
 export const cameraPosition = {
-  eye: { x: 0.0, y: -0.6, z: 0.2 + 0.82 },
-  target: { x: 0.0, y: 0, z: 0.82 },
+  eye: { x: 0.0, y: -0.75, z: 0.2 + 0.82 },
+  target: { x: 0.0, y: -0.15, z: 0.82 },
 };
 
 export function initSimulator() {

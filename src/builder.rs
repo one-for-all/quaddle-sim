@@ -43,7 +43,7 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     let body_joint = Joint::new_floating(Transform3D::new_xyz_rpy(
         body_frame,
         WORLD_FRAME,
-        &vec![0., 0., 0.06 + 0.82],
+        &vec![0., -0.15, 0.06 + 0.82],
         &vec![0., 0., -PI / 2.],
     ));
 
