@@ -1,6 +1,7 @@
 // Import shared CSS
 import "chimpanzee-ui/css";
 
+import { quaddlePowerOnPose } from "quaddle-sim";
 import { initSimulator } from "./sim";
 import { getSimulator, cameraPosition } from "./sim";
 import { initProjectFiles } from "./files";
@@ -21,6 +22,7 @@ import {
   setupModeToggleButton,
   setupProjectDialog,
   isPhoneUA,
+  SimulatorHybrid,
 } from "chimpanzee-ui";
 
 if (isPhoneUA()) {
@@ -41,18 +43,21 @@ setupExplorerToggle();
 setupDownload("quaddle_project.zip");
 setupProjectDialog();
 
+// Same pose the robot spawns in, see power_on_joint_qs in builder.rs
+function setPowerOnPose(hybrid: SimulatorHybrid) {
+  const pose = quaddlePowerOnPose();
+  for (let i = 0; i < pose.length; i += 2) {
+    hybrid.set_joint_q(pose[i], pose[i + 1]);
+  }
+}
+
 setupCompile({
   fqbn: "esp32:esp32:esp32s3",
   onCompiled: (inoBinBytes, symbolsText) => {
     const hybrid = getSimulator()?.hybrid;
     if (hybrid) {
       hybrid.reset();
-
-      // Initial pose
-      let zero_positions = [210, 60, 240, 30];
-      for (let i = 0; i < zero_positions.length; i++) {
-        hybrid.set_joint_q(1 + 1 + 6 * i, zero_positions[i] * (Math.PI / 180)); // skip first floating joint and other non-actuated joints
-      }
+      setPowerOnPose(hybrid);
 
       // No-op until QuaddleESP32S3Controller implements reboot_esp32
       hybrid.reboot_esp32_controller(0, inoBinBytes, symbolsText);
@@ -60,17 +65,13 @@ setupCompile({
   },
 });
 
-// Initial pose is baked into the joints at construction, so reset()
-// already restores it; the controller reboot is a no-op until
+// reset() zeroes every joint, so put the robot back in the power-on pose it
+// spawned in; the controller reboot is a no-op until
 // QuaddleESP32S3Controller implements reboot
 setupResetButton(
   { getSimulator },
   (hybrid) => {
-    // Initial pose
-    let zero_positions = [210, 60, 240, 30];
-    for (let i = 0; i < zero_positions.length; i++) {
-      hybrid.set_joint_q(1 + 1 + 6 * i, zero_positions[i] * (Math.PI / 180)); // skip first floating joint and other non-actuated joints
-    }
+    setPowerOnPose(hybrid);
 
     hybrid.reboot_code_controller?.(0, "");
   },

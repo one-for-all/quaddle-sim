@@ -33,6 +33,9 @@ use {
     wasm_bindgen::prelude::wasm_bindgen,
 };
 
+/// Servo zero positions in degrees, per firmware joint index.
+const ZERO_POSITIONS: [Float; 6] = [90., 135., 210., 60., 240., 30.];
+
 pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     let mut state = Hybrid::empty();
     state.set_friction_mu(1.0);
@@ -47,7 +50,7 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
         &vec![0., 0., -PI / 2.],
     ));
 
-    let zero_positions: [Float; _] = [90., 135., 210., 60., 240., 30.];
+    let zero_positions = ZERO_POSITIONS;
 
     // left-front
     let (lf_frames, lf_rigids, lf_joints) = build_leg(
@@ -147,29 +150,51 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
         zero_positions[5],
     );
 
-    // Spawn in the firmware's power-on pose (currentAng in OpenCat.h, the rest
-    // posture), so its first transform() starts from where the joints really are.
-    // Firmware maps a joint angle to servo angle zeroPosition + rotationDirection * angle.
-    // The URDF pose stays labelled zero_q; the thigh and motor arm share one axis,
-    // so turning both by the same amount turns the whole leg linkage rigidly.
-    let rotation_directions: [Float; _] = [1., -1., 1., -1., -1., 1.];
-    let power_on_angles: [Float; _] = [0., 90., 0., 0., 40., 40.];
-    let leg_dof = 6; // thigh, motor arm, spring, leg, wheel, wheel tip
-    for leg in 0..4 {
-        let servo = leg + 2; // firmware joints 2..5 are LF, RF, RB, LB
-        let spawn_q = (rotation_directions[servo] * power_on_angles[servo]).to_radians();
-        let thigh_index = 1 + leg * leg_dof; // joint 0 is the floating body
-        let motor_arm_index = thigh_index + 1;
-        articulated.set_joint_q(thigh_index, JointPosition::Float(spawn_q));
-        articulated.set_joint_q(
-            motor_arm_index,
-            JointPosition::Float(zero_positions[servo].to_radians() + spawn_q),
-        );
+    for (index, q) in power_on_joint_qs() {
+        articulated.set_joint_q(index, JointPosition::Float(q));
     }
 
     state.add_articulated(articulated);
 
     state
+}
+
+/// The firmware's power-on pose (currentAng in OpenCat.h, the rest posture) as
+/// (joint index, q) pairs, so the robot spawns and resets to where the joints
+/// really are when its first transform() runs.
+/// Firmware maps a joint angle to servo angle zeroPosition + rotationDirection * angle.
+/// The URDF pose stays labelled zero_q; the thigh and motor arm share one axis,
+/// so turning both by the same amount turns the whole leg linkage rigidly.
+pub fn power_on_joint_qs() -> Vec<(usize, Float)> {
+    let zero_positions = ZERO_POSITIONS;
+    let rotation_directions: [Float; _] = [1., -1., 1., -1., -1., 1.];
+    let power_on_angles: [Float; _] = [0., 90., 0., 0., 40., 40.];
+    let leg_dof = 6; // thigh, motor arm, spring, leg, wheel, wheel tip
+    let mut qs = vec![];
+    for leg in 0..4 {
+        let servo = leg + 2; // firmware joints 2..5 are LF, RF, RB, LB
+        let spawn_q = (rotation_directions[servo] * power_on_angles[servo]).to_radians();
+        let thigh_index = 1 + leg * leg_dof; // joint 0 is the floating body
+        let motor_arm_index = thigh_index + 1;
+        qs.push((thigh_index, spawn_q));
+        qs.push((
+            motor_arm_index,
+            zero_positions[servo].to_radians() + spawn_q,
+        ));
+    }
+    qs
+}
+
+/// `power_on_joint_qs` flattened to [index, q, index, q, ...] for JS, which
+/// applies it with `set_joint_q` after `reset()` zeroes every joint.
+#[cfg(any(target_arch = "wasm32", rust_analyzer))]
+#[allow(non_snake_case)]
+#[wasm_bindgen]
+pub fn quaddlePowerOnPose() -> Vec<Float> {
+    power_on_joint_qs()
+        .into_iter()
+        .flat_map(|(index, q)| [index as Float, q])
+        .collect()
 }
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
