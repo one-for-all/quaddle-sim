@@ -12,6 +12,8 @@ export function initProjectFiles() {
   const entries: Record<string, FileEntry> = {};
   filesContext
     .keys()
+    // Arduino only builds .ino files at the sketch root; skip nested ones (e.g. src/display_test.ino)
+    .filter((key) => !/^\.\/.+\/[^/]+\.ino$/i.test(key))
     .sort((a, b) => {
       return a.localeCompare(b);
     })
