@@ -29,3 +29,6 @@ www/static/rom
 www/src/assets/OpenCatESP32S3
 www/src/assets/OpenCatESP32S3.ino.bin
 www/src/assets/symbols.txt
+
+# local reference copies (old firmware builds etc.), see reference/*/README.md
+/reference
