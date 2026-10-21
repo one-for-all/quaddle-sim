@@ -8,7 +8,7 @@ use gorilla_physics::{
         rigid::helper::{build_joint, build_revolute_constraint, build_rigid},
     },
     joint::{
-        Joint,
+        Joint, JointPosition,
         constraint::{Constraint, RangeConstraint, RelativeRangeConstraint},
     },
     na::{Vector3, vector},
@@ -146,6 +146,26 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
         urdf,
         zero_positions[5],
     );
+
+    // Spawn in the firmware's power-on pose (currentAng in OpenCat.h, the rest
+    // posture), so its first transform() starts from where the joints really are.
+    // Firmware maps a joint angle to servo angle zeroPosition + rotationDirection * angle.
+    // The URDF pose stays labelled zero_q; the thigh and motor arm share one axis,
+    // so turning both by the same amount turns the whole leg linkage rigidly.
+    let rotation_directions: [Float; _] = [1., -1., 1., -1., -1., 1.];
+    let power_on_angles: [Float; _] = [0., 90., 0., 0., 40., 40.];
+    let leg_dof = 6; // thigh, motor arm, spring, leg, wheel, wheel tip
+    for leg in 0..4 {
+        let servo = leg + 2; // firmware joints 2..5 are LF, RF, RB, LB
+        let spawn_q = (rotation_directions[servo] * power_on_angles[servo]).to_radians();
+        let thigh_index = 1 + leg * leg_dof; // joint 0 is the floating body
+        let motor_arm_index = thigh_index + 1;
+        articulated.set_joint_q(thigh_index, JointPosition::Float(spawn_q));
+        articulated.set_joint_q(
+            motor_arm_index,
+            JointPosition::Float(zero_positions[servo].to_radians() + spawn_q),
+        );
+    }
 
     state.add_articulated(articulated);
 
