@@ -249,7 +249,8 @@ fn build_leg(
 
     // left-front
     let thigh_frame = format!("{}_thigh", name); // same as link name
-    let thigh = build_rigid(&thigh_frame, &thigh_frame, urdf, meshes, false);
+    let mut thigh = build_rigid(&thigh_frame, &thigh_frame, urdf, meshes, false);
+    add_quaddle_thigh_collision(&mut thigh, side);
     let thigh_joint = build_joint(
         &thigh_frame,
         body_frame,
@@ -261,7 +262,8 @@ fn build_leg(
     // let lf_thigh_joint = build_fixed_joint(lf_thigh_frame, body_frame, "left_front_thigh", urdf);
 
     let motor_arm_frame = format!("{}_motor_arm", name);
-    let motor_arm = build_rigid(&motor_arm_frame, &motor_arm_frame, urdf, meshes, false);
+    let mut motor_arm = build_rigid(&motor_arm_frame, &motor_arm_frame, urdf, meshes, false);
+    add_quaddle_motor_arm_collision(&mut motor_arm);
     // The P1L driving this joint is part of its drivetrain: the rotor seen
     // through the gearbox is most of what the servo torque accelerates, and
     // the gear friction is what holds the joint still under a small torque.
@@ -397,12 +399,31 @@ fn add_quaddle_wheel_tip_collision(rigid: &mut Rigid, which_leg: &str, urdf: &Ro
     rigid.add_collision_sphere_at(&Vector3::from(point_joint.origin.xyz.0), 0.002);
 }
 
-// body length 10.5cm, width 7.1cm, height 2.7cm
+// The thigh is a flat plate pivoting on the body side: in its link frame it
+// lies in the xy plane, reaching from its pivot out along +y (left) or -y
+// (right) to the knee bearing, with its outer face -- the one that touches the
+// ground when the robot lies on its side -- toward -z. Taken from the extents
+// of thigh.stl / thigh_right.stl.
+fn add_quaddle_thigh_collision(rigid: &mut Rigid, side: &str) {
+    let y = if side == "left" { 0.0133 } else { -0.0133 };
+    rigid.add_collision_cuboid_at(&vector![0., y, -0.0015], 0.017, 0.0436, 0.008);
+}
+
+// The motor arm is the servo horn, flush with the thigh on the outside of the
+// body: in its link frame it reaches along +x, outer face toward -z. Taken
+// from the extents of motor_arm.stl.
+fn add_quaddle_motor_arm_collision(rigid: &mut Rigid) {
+    rigid.add_collision_cuboid_at(&vector![0.0045, 0., 0.00055], 0.02, 0.011, 0.0065);
+}
+
+// body length 10.5cm, width 5.0cm, height 2.7cm. The width is the shell's
+// alone (body.stl): what sticks out past it on either side are the thighs and
+// motor arms, which turn with the legs and so collide on their own.
 fn add_quaddle_body_collision(rigid: &mut Rigid, urdf: &Robot) {
     let joint_name = "body_collision_frame";
     let point_joint = urdf.joints.iter().find(|&j| j.name == joint_name).unwrap();
     let p = Vector3::from(point_joint.origin.xyz.0);
-    let w = 0.071;
+    let w = 0.0498;
     let d = 0.105;
     let h = 0.027;
     let com = p - vector![0., 0., h / 2.];
