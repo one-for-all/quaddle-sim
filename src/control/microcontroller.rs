@@ -14,7 +14,7 @@ use gibbon_electronics::{
     servo::petoi_p1l::PetoiP1L,
 };
 use gorilla_physics::{
-    GRAVITY,
+    GRAVITY, PI,
     hybrid::{Rigid, articulated::Articulated, control::ArticulatedController},
     joint::Joint,
     na::{DVector, Vector3},
@@ -32,9 +32,8 @@ pub(crate) struct QuaddleESP32S3Controller {
     /// The ICM-42670 on the board, AP_AD0 high (0x69). Shared: the chip's bus
     /// reads its registers, and this controller tells it how the body moves.
     imu: Rc<RefCell<ICM42670>>,
-    /// The velocity of the IMU at the previous step, world frame, from which
-    /// its acceleration is differenced. `None` until there is one.
-    imu_last_velocity: Option<Vector3<Float>>,
+    /// How the IMU moved at the previous step. `None` until there is one.
+    imu_track: Option<ImuTrack>,
 
     uart_payload: VecDeque<u8>, // data pending to be fed into esp32 uart0
 }
@@ -131,16 +130,16 @@ impl QuaddleESP32S3Controller {
             esp32s3,
             leg_servos: std::array::from_fn(|_| PetoiP1L::new()),
             imu,
-            imu_last_velocity: None,
+            imu_track: None,
             uart_payload: VecDeque::new(),
         }
     }
 
     /// Tell the IMU how the body is moving, and let it sample.
     fn sense_motion(&mut self, dt: Float, articulated: &Articulated) {
-        let (specific_force, angular_velocity, velocity) =
-            imu_motion(&articulated.bodies[0], self.imu_last_velocity, dt);
-        self.imu_last_velocity = Some(velocity);
+        let (specific_force, angular_velocity, track) =
+            imu_motion(&articulated.bodies[0], self.imu_track, dt);
+        self.imu_track = Some(track);
 
         let mut imu = self.imu.borrow_mut();
         imu.measure(specific_force, angular_velocity);
@@ -148,30 +147,60 @@ impl QuaddleESP32S3Controller {
     }
 }
 
+/// The corner of the low-pass that stands in for the robot's give between a
+/// foot striking and the board feeling it, in Hz.
+///
+/// The solver's contacts are rigid: a foot landing or a servo snapping to a
+/// pose changes the body's velocity within one step, which differenced reads
+/// as several g for 1/600 s. The chip's own 180 Hz low-pass is quicker than
+/// that step and passes most of it, so `getImuException` saw shoves -- a jump
+/// of half a g on x or y is all it takes while holding a posture -- where
+/// nothing pushed. A real robot's legs, plastic and gear lash spread that
+/// over tens of milliseconds; a push by a hand lasts longer still, and gets
+/// through.
+const MOUNT_BANDWIDTH: Float = 10.;
+
+/// How the IMU moved at a step, world frame.
+#[derive(Clone, Copy)]
+struct ImuTrack {
+    /// Its velocity, from which the next step's acceleration is differenced.
+    velocity: Vector3<Float>,
+    /// Its acceleration, smoothed by the mount.
+    acceleration: Vector3<Float>,
+}
+
 /// What the IMU on `body` feels -- specific force in m/s^2 and angular
-/// velocity in rad/s, in the chip's axes -- along with the chip's velocity in
-/// the world frame, which the next step differences against.
+/// velocity in rad/s, in the chip's axes -- along with how it moved, which the
+/// next step carries on from.
 ///
 /// The chip is taken to sit at the body frame's origin, on the main board; a
 /// few centimetres either way only changes the rotational part of what it
 /// feels, which is small next to gravity at the rates this robot turns. Its
-/// acceleration is the step-to-step change in its velocity: that is all a
-/// velocity-level solver has, and it is what the chip's own low-pass smooths
-/// contact impulses out of.
+/// acceleration is the step-to-step change in its velocity -- that is all a
+/// velocity-level solver has -- passed through the mount's low-pass. That is
+/// done in the world frame, before gravity is added: tilting still turns
+/// gravity across the chip's axes at once, so the flip and lift tests do not
+/// lag.
 fn imu_motion(
     body: &Rigid,
-    last_velocity: Option<Vector3<Float>>,
+    last: Option<ImuTrack>,
     dt: Float,
-) -> ([Float; 3], [Float; 3], Vector3<Float>) {
+) -> ([Float; 3], [Float; 3], ImuTrack) {
     let rotation = body.pose.rotation;
     let position = body.pose.translation;
     // The twist's linear part is the velocity of the point at the world
     // origin; carry it over to the body.
     let velocity = body.twist.linear + body.twist.angular.cross(&position);
 
-    let acceleration = match last_velocity {
-        Some(last) if dt > 0. => (velocity - last) / dt,
-        _ => Vector3::zeros(),
+    let acceleration = match last {
+        Some(last) if dt > 0. => {
+            let raw = (velocity - last.velocity) / dt;
+            // Exact discretisation of a first-order low-pass.
+            let alpha = 1. - (-2. * PI * MOUNT_BANDWIDTH * dt).exp();
+            last.acceleration + (raw - last.acceleration) * alpha
+        }
+        Some(last) => last.acceleration,
+        None => Vector3::zeros(),
     };
 
     // What an accelerometer senses is the acceleration minus gravity: +1 g up
@@ -183,7 +212,10 @@ fn imu_motion(
     (
         body_to_imu(specific_force),
         body_to_imu(angular_velocity),
-        velocity,
+        ImuTrack {
+            velocity,
+            acceleration,
+        },
     )
 }
 
@@ -314,7 +346,7 @@ impl ArticulatedController for QuaddleESP32S3Controller {
         for servo in self.leg_servos.iter_mut() {
             servo.reset();
         }
-        self.imu_last_velocity = None;
+        self.imu_track = None;
     }
 
     fn reboot(&mut self, _code: &str) {
@@ -322,7 +354,7 @@ impl ArticulatedController for QuaddleESP32S3Controller {
         for servo in self.leg_servos.iter_mut() {
             servo.reset();
         }
-        self.imu_last_velocity = None;
+        self.imu_track = None;
     }
 
     /// Return the content in UART
@@ -346,7 +378,7 @@ mod imu_motion_tests {
         types::Float,
     };
 
-    use super::imu_motion;
+    use super::{ImuTrack, imu_motion};
 
     /// The body at the spawn point, turned to `rotation` and spinning at
     /// `angular` (world frame).
@@ -420,8 +452,57 @@ mod imu_motion_tests {
     fn free_fall_reads_nothing() {
         let body = body_at(UnitQuaternion::identity(), Vector3::zeros());
         let dt = 1e-3;
-        let last = Some(Vector3::new(0., 0., GRAVITY * dt));
+        let last = Some(ImuTrack {
+            velocity: Vector3::new(0., 0., GRAVITY * dt),
+            acceleration: Vector3::new(0., 0., -GRAVITY),
+        });
         let (force, _, _) = imu_motion(&body, last, dt);
         assert_close(force, [0., 0., 0.]);
+    }
+
+    /// The thresholds `getImuException` holds a posture to, in m/s^2: x is
+    /// 5000 and y 4000 of the firmware's 8192 counts to 10 m/s^2.
+    const PUSH_X: Float = 5000. * 10. / 8192.;
+    const PUSH_Y: Float = 4000. * 10. / 8192.;
+
+    /// The body jolted forward 5 cm/s within one step, as a foot landing on a
+    /// rigid contact does -- 30 m/s^2 differenced -- reads well under a push.
+    #[test]
+    fn a_one_step_jolt_is_not_a_push() {
+        let dt = 1. / 600.;
+        let mut body = body_at(UnitQuaternion::identity(), Vector3::zeros());
+        let rest = Some(ImuTrack {
+            velocity: Vector3::zeros(),
+            acceleration: Vector3::zeros(),
+        });
+        // The URDF's head is along -y.
+        body.twist = SpatialVector::new(Vector3::zeros(), Vector3::new(0., -0.05, 0.));
+        let (force, _, track) = imu_motion(&body, rest, dt);
+        assert!(force[0].abs() < PUSH_X / 2., "{force:?}");
+
+        // Then it carries on at that speed: the reading only falls.
+        let (after, _, _) = imu_motion(&body, Some(track), dt);
+        assert!(after[0].abs() < force[0].abs(), "{after:?}");
+    }
+
+    /// Shoved sideways at 1 g for 100 ms, as a hand would: that gets through.
+    #[test]
+    fn a_sustained_shove_is_a_push() {
+        let dt = 1. / 600.;
+        let mut body = body_at(UnitQuaternion::identity(), Vector3::zeros());
+        let mut track = Some(ImuTrack {
+            velocity: Vector3::zeros(),
+            acceleration: Vector3::zeros(),
+        });
+        let mut force = [0.; 3];
+        for step in 1..=60 {
+            // The URDF's left is along +x.
+            let velocity = Vector3::new(GRAVITY * dt * step as Float, 0., 0.);
+            body.twist = SpatialVector::new(Vector3::zeros(), velocity);
+            let next;
+            (force, _, next) = imu_motion(&body, track, dt);
+            track = Some(next);
+        }
+        assert!(force[1] > PUSH_Y, "{force:?}");
     }
 }
