@@ -20,7 +20,7 @@ export function initSimulator() {
     {
       scenePath: "gamer_setup_pack.glb",
       rotation: new Euler(Math.PI / 2),
-      position: new Vector3(0.6, 0, 0),
+      position: new Vector3(0.5, 0, 0),
     },
   ];
   let gltfLoader = new GLTFLoader();

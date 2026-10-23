@@ -268,7 +268,7 @@ pub async fn createQuaddle() -> InterfaceHybrid {
     // Add table
     let mut table = import_static_body("mesh/table/table.obj").await;
     table.update_pose(Isometry3::from_parts(
-        Translation3::new(0.6, 0., 0.),
+        Translation3::new(0.5, 0., 0.),
         UnitQuaternion::identity(),
     ));
     table.show_visual = false;
