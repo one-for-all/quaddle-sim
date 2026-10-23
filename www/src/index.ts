@@ -5,6 +5,7 @@ import { quaddlePowerOnPose } from "quaddle-sim";
 import { initSimulator } from "./sim";
 import { getSimulator, cameraPosition } from "./sim";
 import { initProjectFiles } from "./files";
+import { setupDevTools } from "./devTools";
 import {
   createSerialMonitorPanel,
   setupResize,
@@ -91,6 +92,10 @@ setupWasdControls(
   },
   { isTypingElsewhere: editorIsFocused },
 );
+
+if (DEV_TOOLS) {
+  setupDevTools();
+}
 
 // Skill names mirror Instinct_Quaddle.h; each payload is "k" + skill name.
 const motions = [

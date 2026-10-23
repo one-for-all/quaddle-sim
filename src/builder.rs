@@ -19,6 +19,8 @@ use gorilla_physics::{
 use gorilla_physics::{
     collision::halfspace::HalfSpace,
     hybrid::{builders::import_static_body, control::NullArticulatedController},
+    joint::JointVelocity,
+    spatial::{pose::Pose, spatial_vector::SpatialVector},
 };
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 use nalgebra::{Isometry3, Translation3, UnitQuaternion};
@@ -195,6 +197,55 @@ pub fn quaddlePowerOnPose() -> Vec<Float> {
         .into_iter()
         .flat_map(|(index, q)| [index as Float, q])
         .collect()
+}
+
+/// Dev tool for testing side-fall recovery: tips the robot onto its left or
+/// right side where it stands, keeping its heading, joint angles and the
+/// firmware's state, as if it had just been knocked over. It is dropped from
+/// spawn height so it lands on the table rather than starting in contact.
+/// Only wired into the UI on the dev server, see DEV_TOOLS in rspack.config.js.
+#[cfg(any(target_arch = "wasm32", rust_analyzer))]
+#[allow(non_snake_case)]
+#[wasm_bindgen]
+pub fn quaddleLayOnSide(hybrid: &mut InterfaceHybrid, left: bool) {
+    let articulated = &mut hybrid.hybrid_mut().articulated[0];
+    let Joint::FloatingJoint(body_joint) = &articulated.joints[0] else {
+        panic!("joint 0 should be the floating body joint");
+    };
+    // The body's parent is the world, so this is the body's world pose
+    let iso = body_joint.transform.iso;
+    let init_iso = body_joint.init_iso;
+
+    // Heading, from where the body's long axis (y) points in the world xy plane
+    let long_axis = iso.rotation * Vector3::y();
+    let yaw = long_axis.y.atan2(long_axis.x) - PI / 2.;
+
+    // Body +x is its left side; rolling about the long axis by +90° points it
+    // down at the ground
+    let roll = if left { PI / 2. } else { -PI / 2. };
+    let rotation = UnitQuaternion::from_axis_angle(&Vector3::z_axis(), yaw)
+        * UnitQuaternion::from_axis_angle(&Vector3::y_axis(), roll);
+    let translation =
+        Translation3::new(iso.translation.x, iso.translation.y, init_iso.translation.z);
+
+    // The floating joint's q is relative to the spawn transform
+    let q = init_iso.inverse() * Isometry3::from_parts(translation, rotation);
+    articulated.set_joint_q(
+        0,
+        JointPosition::Pose(Pose {
+            rotation: q.rotation,
+            translation: q.translation.vector,
+        }),
+    );
+
+    for i in 0..articulated.joints.len() {
+        let v = match articulated.joints[i] {
+            Joint::FloatingJoint(_) => JointVelocity::Spatial(SpatialVector::zero()),
+            Joint::FixedJoint(_) => continue,
+            _ => JointVelocity::Float(0.),
+        };
+        articulated.set_joint_v(i, v);
+    }
 }
 
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
