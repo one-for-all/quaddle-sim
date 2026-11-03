@@ -36,7 +36,21 @@ pub(crate) struct QuaddleESP32S3Controller {
     imu_track: Option<ImuTrack>,
 
     uart_payload: VecDeque<u8>, // data pending to be fed into esp32 uart0
+
+    /// Time handed to `step` that did not divide evenly into [`SAMPLE_DT`],
+    /// carried into the next step so the board does not slowly fall behind
+    /// the simulation.
+    pending: Float,
 }
+
+/// How long the chip runs between servo pin samples.
+///
+/// One microsecond is what the servos' pulse width is resolved to -- finer
+/// than a servo's own dead band -- and 8 instructions of the S3's emulated
+/// 8 MHz. Sampling the pins after every instruction instead measured the same
+/// pulses at roughly 15% more cost per step, since OpenCat keeps both cores
+/// busy and the four pin reads and servo steps ran 8M times a sim-second.
+const SAMPLE_DT: Float = 1e-6;
 
 /// The IMU as the chip's I2C bus sees it.
 struct ImuOnBus(Rc<RefCell<ICM42670>>);
@@ -132,6 +146,7 @@ impl QuaddleESP32S3Controller {
             imu,
             imu_track: None,
             uart_payload: VecDeque::new(),
+            pending: 0.,
         }
     }
 
@@ -223,23 +238,33 @@ impl ArticulatedController for QuaddleESP32S3Controller {
     fn step(&mut self, dt: Float, articulated: &Articulated) {
         let cpu_freq_hz = (CPU_FREQUENCY * 1000_000 / S3_CPU_SLOWDOWN_FACTOR) as Float;
         let cycle_dt = 1. / cpu_freq_hz;
-        let n_steps = (dt / cycle_dt) as usize;
+        let cycles_per_sample = (SAMPLE_DT / cycle_dt).round() as usize;
 
         let pins = [11, 13, 14, 10];
 
         self.sense_motion(dt, articulated);
 
-        for _ in 0..n_steps {
-            self.esp32s3.step(cycle_dt);
+        self.pending += dt;
+        let samples = (self.pending / SAMPLE_DT) as usize;
+        self.pending -= samples as Float * SAMPLE_DT;
+
+        for _ in 0..samples {
+            // Ahead of the instructions, so a byte typed at the board is there
+            // to be read by the ones about to run. One per sample is far faster
+            // than any baud rate, and leaves the sketch a microsecond between
+            // bytes.
             if let Some(char) = self.uart_payload.pop_front() {
                 self.esp32s3.feed_uart(char);
+            }
+            for _ in 0..cycles_per_sample {
+                self.esp32s3.step(cycle_dt);
             }
 
             for (i, servo) in self.leg_servos.iter_mut().enumerate() {
                 // An unreadable pin is an idle one, i.e. no pulse.
                 let pin = self.esp32s3.read_pin(pins[i]).unwrap_or(false);
                 servo.read(if pin { HIGH } else { LOW });
-                servo.step(cycle_dt);
+                servo.step(SAMPLE_DT);
             }
         }
     }
