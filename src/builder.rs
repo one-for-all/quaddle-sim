@@ -269,8 +269,8 @@ pub async fn createQuaddle() -> InterfaceHybrid {
 
     // A beverage can to judge the robot's size by, and for it to push around.
     // It walks off toward -x (screen left, from the default camera), so the can
-    // stands behind its line, to the left of where it starts.
-    let can = build_beverage_can(&vector![-0.15, 0.05, 0.]);
+    // stands behind its line, to the right of where it starts.
+    let can = build_beverage_can(&vector![0.15, 0.05, 0.]);
     state.add_articulated(can);
 
     // Add ground
