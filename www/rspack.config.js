@@ -59,12 +59,6 @@ const rspackConfig = {
             ignore: ["**/GEMINI.md", "**/index.html", "**/mesh/*.obj"],
           },
         },
-        {
-          // The table is loaded directly as a raw `.obj`, not through the URDF
-          // mesh path, so it still needs the uncompressed file.
-          from: "static/mesh/table/table.obj",
-          to: `${dist}/mesh/table/table.obj`,
-        },
       ],
     }),
 

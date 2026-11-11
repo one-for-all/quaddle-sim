@@ -18,7 +18,7 @@ use gorilla_physics::{
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 use gorilla_physics::{
     collision::halfspace::HalfSpace,
-    hybrid::{builders::import_static_body, control::NullArticulatedController},
+    hybrid::control::NullArticulatedController,
     joint::JointVelocity,
     spatial::{pose::Pose, spatial_vector::SpatialVector},
 };
@@ -26,6 +26,8 @@ use gorilla_physics::{
 use nalgebra::{Isometry3, Translation3, UnitQuaternion};
 use urdf_rs::Robot;
 
+#[cfg(any(target_arch = "wasm32", rust_analyzer))]
+use crate::can::build_beverage_can;
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 use crate::control::{QuaddleController, microcontroller::QuaddleESP32S3Controller};
 
@@ -48,7 +50,7 @@ pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     let body_joint = Joint::new_floating(Transform3D::new_xyz_rpy(
         body_frame,
         WORLD_FRAME,
-        &vec![0., -0.15, 0.06 + 0.82],
+        &vec![0., -0.15, 0.06],
         &vec![0., 0., -PI / 2.],
     ));
 
@@ -202,7 +204,7 @@ pub fn quaddlePowerOnPose() -> Vec<Float> {
 /// Dev tool for testing side-fall recovery: tips the robot onto its left or
 /// right side where it stands, keeping its heading, joint angles and the
 /// firmware's state, as if it had just been knocked over. It is dropped from
-/// spawn height so it lands on the table rather than starting in contact.
+/// spawn height so it lands on the ground rather than starting in contact.
 /// Only wired into the UI on the dev server, see DEV_TOOLS in rspack.config.js.
 #[cfg(any(target_arch = "wasm32", rust_analyzer))]
 #[allow(non_snake_case)]
@@ -265,20 +267,11 @@ pub async fn createQuaddle() -> InterfaceHybrid {
     let controller = QuaddleESP32S3Controller::new().await;
     state.set_controller(0, controller);
 
-    // Add table
-    let mut table = import_static_body("mesh/table/table.obj").await;
-    table.update_pose(Isometry3::from_parts(
-        Translation3::new(0.5, 0., 0.),
-        UnitQuaternion::identity(),
-    ));
-    table.show_visual = false;
-    state.add_static_body(table);
-
-    // // Add a cube to interact with
-    // let m = 0.02;
-    // let w = 0.08;
-    // let cube = Articulated::new_cube_at("cube", m, w, &vector![-0.3, 0.2, 2. * w + 0.82]);
-    // state.add_articulated(cube);
+    // A beverage can to judge the robot's size by, and for it to push around.
+    // It walks off toward -x (screen left, from the default camera), so the can
+    // stands behind its line, to the left of where it starts.
+    let can = build_beverage_can(&vector![-0.15, 0.05, 0.]);
+    state.add_articulated(can);
 
     // Add ground
     state.add_halfspace(HalfSpace::new(Vector3::z_axis(), 0.));

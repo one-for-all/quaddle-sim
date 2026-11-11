@@ -411,7 +411,7 @@ mod imu_motion_tests {
         let mut body = Rigid::new_cuboid(0.1, 0.071, 0.105, 0.027, "body");
         body.pose = Pose {
             rotation,
-            translation: Vector3::new(0., -0.15, 0.88),
+            translation: Vector3::new(0., -0.15, 0.06),
         };
         body.twist = SpatialVector::new(angular, Vector3::zeros());
         body
