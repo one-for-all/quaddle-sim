@@ -52,7 +52,14 @@ function setPowerOnPose(hybrid: SimulatorHybrid) {
   }
 }
 
+// Served from localhost → use the local compile API container on :8081;
+// otherwise fall back to chimpanzee-ui's default hosted Cloud Run service
+const isLocalhost = ["localhost", "127.0.0.1", "[::1]"].includes(
+  location.hostname,
+);
+
 setupCompile({
+  apiBaseUrl: isLocalhost ? "http://localhost:8081" : undefined,
   fqbn: "esp32:esp32:esp32s3",
   onCompiled: (inoBinBytes, symbolsText) => {
     const hybrid = getSimulator()?.hybrid;
