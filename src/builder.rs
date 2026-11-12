@@ -43,6 +43,10 @@ const ZERO_POSITIONS: [Float; 6] = [90., 135., 210., 60., 240., 30.];
 pub fn build_quaddle(meshes: &mut URDFMeshes, urdf: &Robot) -> Hybrid {
     let mut state = Hybrid::empty();
     state.set_friction_mu(1.0);
+    // The contact solve was half of every step in Clarabel. Solved densely,
+    // robot and can apart, it is the same problem to a tighter tolerance for
+    // a quarter of the cost. See `Hybrid::set_dense_cone_solve`.
+    state.set_dense_cone_solve(true);
 
     let body_frame = "body";
     let mut body = build_rigid(body_frame, "body", urdf, meshes, false);

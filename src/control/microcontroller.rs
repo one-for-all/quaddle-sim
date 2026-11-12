@@ -93,6 +93,9 @@ impl QuaddleESP32S3Controller {
         let partition_table_data: Vec<u8>;
         let app_data: Vec<u8>;
 
+        // The same files the page fetches, relative to the working directory
+        // -- run a native build from `www/static` to boot what the browser
+        // boots (see `tools/realtime`).
         #[cfg(not(target_arch = "wasm32"))]
         {
             use std::fs;
@@ -100,15 +103,17 @@ impl QuaddleESP32S3Controller {
             use gorilla_physics::util::read_file;
 
             rom_data = fs::read("rom/wokwi/esp32s3-rom.bin").unwrap();
-            symbols.add(&read_file("rom/symbols.txt"));
+            symbols.add(&read_file("rom/esp32s3_rom_symbols.txt"));
+
+            let build_dir = format!("{}/build", project);
 
             bootloader_data =
-                fs::read("OpenCatEsp32/build/OpenCatEsp32.ino.bootloader.bin").unwrap();
+                fs::read(format!("{}/{}.ino.bootloader.bin", build_dir, project)).unwrap();
             partition_table_data =
-                fs::read("OpenCatEsp32/build/OpenCatEsp32.ino.partitions.bin").unwrap();
-            app_data = fs::read("OpenCatEsp32/build/OpenCatEsp32.ino.bin").unwrap();
-            symbols.add(&read_file("OpenCatEsp32/build/symbols.txt"));
-            symbols.add(&read_file("OpenCatEsp32/bootloader_symbols.txt"));
+                fs::read(format!("{}/{}.ino.partitions.bin", build_dir, project)).unwrap();
+            app_data = fs::read(format!("{}/{}.ino.bin", build_dir, project)).unwrap();
+            symbols.add(&read_file(&format!("{}/symbols.txt", build_dir)));
+            symbols.add(&read_file(&format!("{}/bootloader_symbols.txt", build_dir)));
         }
 
         #[cfg(target_arch = "wasm32")]
