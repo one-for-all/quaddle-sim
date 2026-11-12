@@ -90,7 +90,7 @@ setupModeToggleButton();
 setupWasdControls(
   { getSimulator },
   {
-    forward: "ktrF",
+    forward: "ktr20F",
     left: "kvtL",
     backward: "kbkF",
     right: "kvtR",
